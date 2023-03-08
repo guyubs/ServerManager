@@ -1,0 +1,36 @@
+<!-- templates/register.html -->
+
+<!DOCTYPE html>
+<html lang="zh-han">
+<head>
+    <title>注册</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+    <form method="post" action='/register'>
+        <label>用户名：<input type="text" name="username" value=""></label></br>
+        <label>密码：<input type="password" name="password1" value=""></label></br>
+        <label>重复密码：<input type="password" name="password2" value=""></label></br>
+        <label>邮箱：<input type="email" name="email" value=""></label></br>
+        <input type="submit" value="注册">
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    {% if error %}
+        <p>{{error}}</p>
+    {% endif %}
+
+    <a href="/">返回主页</a>
+</body>
+</html>

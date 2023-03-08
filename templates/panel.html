@@ -1,0 +1,16 @@
+<!-- templates/panel.html -->
+
+<!DOCTYPE html>
+<html lang="zh-han">
+    <head>
+        <title>操作面板</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="css/style.css" rel="stylesheet">
+    </head>
+    <body>
+        <h3>操作面板</h3>
+        <p>{{username}}，欢迎来到操作面板！  <a href="{{ url_for('logout') }}">退出</a></p>
+        <p>（此处显示软件主要功能）</p>
+    </body>
+</html>
