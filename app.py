@@ -98,5 +98,51 @@ def logout():
     return redirect(url_for('index'))
 
 
+@app.route('/edit', methods=['GET', 'POST'])
+def edit():
+    # 如果未登录，则跳转到登录页面
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    # 获取当前用户的信息
+    cursor.execute("SELECT * FROM users WHERE username=?", (session['username'],))
+    user = cursor.fetchone()
+
+    if request.method == 'POST':
+        # 获取用户提交的表单数据
+        password1 = request.form['password1']
+        password2 = request.form['password2']
+        email = request.form['email']
+
+        # 检查两次输入的密码是否相同
+        if password1 != password2:
+            flash('两次输入的密码不一致')
+            return redirect(url_for('edit'))
+
+        if password1 == '':
+            flash('密码不能为空')
+            return redirect(url_for('edit'))
+
+        # 检查新email是否已被注册
+        cursor.execute("SELECT * FROM users WHERE email=? AND id!=?", (email, user.id))
+        if cursor.fetchone():
+            flash('该email已被注册')
+            return redirect(url_for('edit'))
+
+        # 更新用户信息
+        cursor.execute("UPDATE users SET password=?, email=? WHERE id=?", (password1, email, user.id))
+        conn.commit()
+
+        # 更新 session 中的用户信息
+        session['email'] = email
+
+        # 显示成功消息
+        flash('用户信息已更新')
+        return redirect(url_for('panel'))
+
+    # 渲染 edit.html 页面，并传递当前用户的信息
+    return render_template('edit.html', user=user)
+
+
 if __name__ == '__main__':
     app.run(debug=True)
