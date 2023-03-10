@@ -1,14 +1,17 @@
-import pyodbc
+import random, pyodbc
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 app.secret_key = "secret key"  # 设置 secret key 以启用 flash 消息
 
+############
+# 数据库配置
+############
 # Connect to SQL Server Express using Windows authentication
 server = 'localhost'
 database = 'ServerManager'
-conn = pyodbc.connect('Driver={SQL Server};Server='+server+';Database='+database+';Trusted_Connection=yes;')
+conn = pyodbc.connect('Driver={SQL Server};Server=' + server + ';Database=' + database + ';Trusted_Connection=yes;')
 
 # 读取数据库信息
 cursor = conn.cursor()
@@ -22,6 +25,33 @@ if not cursor.fetchone():
                    "password varchar(255), "
                    "email varchar(255))")
     conn.commit()
+
+############
+# 发送邮件配置
+############
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'servermanagerapp@gmail.com'  # 电子邮件地址
+app.config['MAIL_PASSWORD'] = 'abeqwuusddabgzot'  # 电子邮第三方app件密码，不是电子邮件密码，需要在邮箱设置。
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+mail = Mail(app)
+
+
+# create a function to send verification code email
+@app.route('/send_verification_code', methods=['POST'])
+def send_verification_code():
+    code = str(random.randint(10000, 99999))
+    sender = app.config['MAIL_USERNAME']
+    recipient = request.form.get('email')
+    session['email'] = recipient  # 保存recipient，用户在用户点击注册时校对邮箱是否被修改。
+    session['code'] = code
+    subject = '您的验证码'
+    body = f'您的验证码为: {code}'
+    msg = Message(subject=subject, body=body, sender=sender, recipients=[recipient])
+    mail.send(msg)
+    flash('验证码已发送至您的邮箱。')
+    return redirect(url_for('register'))
 
 
 @app.route('/')
@@ -55,6 +85,7 @@ def register():
         password1 = request.form['password1']
         password2 = request.form['password2']
         email = request.form['email']
+        verification_code = request.form["verification_code"]
         # 检查用户名是否已被注册
         cursor.execute("SELECT * FROM users WHERE username=?", (username,))
         if cursor.fetchone():
@@ -64,6 +95,14 @@ def register():
         cursor.execute("SELECT * FROM users WHERE email=?", (email,))
         if cursor.fetchone():
             flash('该email已被注册')
+            return redirect(url_for('register'))
+        # 检查验证码
+        if verification_code != session['code']:
+            flash('验证码错误')
+            return redirect(url_for('register'))
+        # 检查验证邮箱和输入邮箱是否相符
+        if email != session['email']:
+            flash('验证邮箱和注册邮箱不符')
             return redirect(url_for('register'))
         # 检查两次输入的密码是否相同
         if password1 != password2:

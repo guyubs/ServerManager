@@ -1,5 +1,3 @@
-<!-- templates/register.html -->
-
 <!DOCTYPE html>
 <html lang="zh-han">
 <head>
@@ -13,7 +11,9 @@
         <label>用户名：<input type="text" name="username" value=""></label></br>
         <label>密码：<input type="password" name="password1" value=""></label></br>
         <label>重复密码：<input type="password" name="password2" value=""></label></br>
-        <label>邮箱：<input type="email" name="email" value=""></label></br>
+        <label>邮箱：<input type="email" name="email" value=""></label>
+        <button id="send-verification-code-btn">向邮箱发送验证码</button></br>
+        <label>验证码：<input type="text" name="verification_code" value=""></label></br>
         <input type="submit" value="注册">
     </form>
 
@@ -32,5 +32,36 @@
     {% endif %}
 
     <a href="/">返回主页</a>
+
+{#使用了jQuery的Ajax方法来向后端发送请求，将邮件地址作为参数发送到后端。
+当后端成功发送验证码后，JS代码会弹出一个提示框提示用户已经发送成功。
+当用户填写完整个表单，点击注册按钮时，将会将所有表单数据提交到后端进行验证。#}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // 当用户点击 "向邮箱发送验证码" 按钮时
+            $('#send-verification-code-btn').click(function(event) {
+                event.preventDefault(); // 阻止表单默认提交行为
+
+                // 获取 email input 中的值
+                var email = $('input[name="email"]').val();
+
+                // 发送Ajax请求，请求后端发送验证码
+                $.ajax({
+                    url: "/send_verification_code",
+                    type: "POST",
+                    data: {
+                        email: email
+                    },
+                    success: function(data) {
+                        alert("验证码已发送，请查看您的邮箱");
+                    },
+                    error: function() {
+                        alert("发送验证码时出现错误，请重试");
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
