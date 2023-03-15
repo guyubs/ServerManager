@@ -26,6 +26,25 @@ if not cursor.fetchone():
                    "email varchar(255))")
     conn.commit()
 
+# 检查数据库中是否存在 ServerInfo 表。若没有则创建。
+cursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='ServerInfo'")
+if not cursor.fetchone():
+    cursor.execute("CREATE TABLE ServerInfo "
+                   "(id int PRIMARY KEY IDENTITY(1,1), "
+                   "hostname varchar(255), "
+                   "password varchar(255), "
+                   "ip_address varchar(255), "
+                   "operating_system varchar(255), "
+                   "os_version varchar(255), "
+                   "applications text, "
+                   "hardware_configuration text, "
+                   "security_settings text, "
+                   "logs_and_monitoring text, "
+                   "backup_and_recovery text, "
+                   "note text)")
+    conn.commit()
+
+
 ############
 # 发送邮件配置
 ############
@@ -181,6 +200,106 @@ def edit():
 
     # 渲染 edit.html 页面，并传递当前用户的信息
     return render_template('edit.html', user=user)
+
+
+@app.route('/manage_server', methods=['GET', 'POST'])
+def manage_server():
+    cursor = conn.cursor()
+
+    if request.method == 'POST':
+        if request.form.get('delete'):
+            # 获取 POST 请求中的表单数据
+            server_id = request.form['server_id']
+
+            # 从 ServerInfo 表中删除指定服务器
+            cursor.execute("DELETE FROM ServerInfo WHERE id=?", (server_id,))
+            conn.commit()
+
+            # 显示成功消息
+            flash('服务器已删除！')
+        else:
+            # 获取 POST 请求中的表单数据
+            hostname = request.form['hostname']
+            password = request.form['password']
+            ip_address = request.form['ip_address']
+            operating_system = request.form['operating_system']
+            os_version = request.form['os_version']
+            applications = request.form['applications']
+            hardware_configuration = request.form['hardware_configuration']
+            security_settings = request.form['security_settings']
+            logs_and_monitoring = request.form['logs_and_monitoring']
+            backup_and_recovery = request.form['backup_and_recovery']
+            note = request.form['note']
+
+            # 将数据插入到 ServerInfo 表中
+            cursor.execute("INSERT INTO ServerInfo (hostname, password, ip_address, "
+                           "operating_system, os_version, applications, hardware_configuration, "
+                           "security_settings, logs_and_monitoring, backup_and_recovery, note) "
+                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           (hostname, password, ip_address, operating_system, os_version,
+                            applications, hardware_configuration, security_settings,
+                            logs_and_monitoring, backup_and_recovery, note))
+            conn.commit()
+
+            # 显示成功消息
+            flash('服务器已添加！')
+
+    # 获取 ServerInfo 表中的所有数据
+    cursor.execute("SELECT * FROM ServerInfo")
+    data = cursor.fetchall()
+
+    return render_template('manage_server.html', data=data)
+
+
+@app.route('/server_delete/<int:server_id>', methods=['POST'])
+def server_delete(server_id):
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM ServerInfo WHERE id=?", (server_id,))
+    conn.commit()
+    flash('服务器已删除！')
+    return redirect(url_for('manage_server'))
+
+
+
+@app.route('/server_edit/<int:id>', methods=['GET', 'POST'])
+def server_edit(id):
+    cursor = conn.cursor()
+
+    # 查询指定id的服务器信息
+    cursor.execute("SELECT * FROM ServerInfo WHERE id=?", (id,))
+    server = cursor.fetchone()
+
+    if request.method == 'POST':
+        # 获取 POST 请求中的表单数据
+        hostname = request.form['hostname']
+        password = request.form['password']
+        ip_address = request.form['ip_address']
+        operating_system = request.form['operating_system']
+        os_version = request.form['os_version']
+        applications = request.form['applications']
+        hardware_configuration = request.form['hardware_configuration']
+        security_settings = request.form['security_settings']
+        logs_and_monitoring = request.form['logs_and_monitoring']
+        backup_and_recovery = request.form['backup_and_recovery']
+        note = request.form['note']
+
+        # 更新数据库中指定id的服务器信息
+        cursor.execute("UPDATE ServerInfo SET hostname=?, password=?, ip_address=?, "
+                       "operating_system=?, os_version=?, applications=?, hardware_configuration=?, "
+                       "security_settings=?, logs_and_monitoring=?, backup_and_recovery=?, note=? "
+                       "WHERE id=?",
+                       (hostname, password, ip_address, operating_system, os_version,
+                        applications, hardware_configuration, security_settings,
+                        logs_and_monitoring, backup_and_recovery, note, id))
+        conn.commit()
+
+        # 显示成功消息
+        flash('服务器信息已修改！')
+        return redirect(url_for('manage_server'))
+
+    # 显示编辑服务器信息的表单
+    return render_template('server_edit.html', data=server)
+
 
 
 if __name__ == '__main__':

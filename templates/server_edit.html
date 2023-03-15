@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>编辑服务器信息</title>
+    <a href="/panel">返回操作面板</a>
+</head>
+<body>
+    <h1>编辑服务器信息</h1>
+    <form method="post">
+        <label>ID</label>
+        <input type="text" name="id" value="{{ data.id }}" readonly>
+        <br>
+        <label>主机名</label>
+        <input type="text" name="hostname" value="{{ data.hostname }}" required>
+        <br>
+        <label>密码</label>
+        <input type="text" name="password" value="{{ data.password }}">
+        <br>
+        <label>IP地址</label>
+        <input type="text" name="ip_address" value="{{ data.ip_address }}">
+        <br>
+        <label>操作系统</label>
+        <input type="text" name="operating_system" value="{{ data.operating_system }}">
+        <br>
+        <label>操作系统版本</label>
+        <input type="text" name="os_version" value="{{ data.os_version }}">
+        <br>
+        <label>应用程序</label>
+        <input type="text" name="applications" value="{{ data.applications }}">
+        <br>
+        <label>硬件配置</label>
+        <input type="text" name="hardware_configuration" value="{{ data.hardware_configuration }}">
+        <br>
+        <label>安全设置</label>
+        <input type="text" name="security_settings" value="{{ data.security_settings }}">
+        <br>
+        <label>日志和监控</label>
+        <input type="text" name="logs_and_monitoring" value="{{ data.logs_and_monitoring }}">
+        <br>
+        <label>备份和恢复</label>
+        <input type="text" name="backup_and_recovery" value="{{ data.backup_and_recovery }}">
+        <br>
+        <label>备注</label>
+        <input type="text" name="note" value="{{ data.note }}">
+        <br>
+        <button type="submit">保存</button>
+    </form>
+</body>
+</html>
