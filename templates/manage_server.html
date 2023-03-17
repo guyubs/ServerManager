@@ -2,17 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>欢迎来到服务器管理页面</title>
+    <title>欢迎来到服务器信息页面</title>
     <link rel="stylesheet" type="text/css" href="/static/css/style.css">
 </head>
 <body>
-    <h1>服务器信息管理</h1>
+    <h1>服务器信息</h1>
     <a href="/panel">返回操作面板</a>
     <table>
         <thead>
             <tr>
                 <th>ID</th>
                 <th>主机名</th>
+                <th>用户名</th>
                 <th>密码</th>
                 <th>IP地址</th>
                 <th>操作系统</th>
@@ -27,10 +28,12 @@
             </tr>
         </thead>
         <tbody>
+
             {% for row in data %}
             <tr>
                 <td>{{ row.id }}</td>
                 <td>{{ row.hostname }}</td>
+                <td>{{ row.username }}</td>
                 <td>{{ row.password }}</td>
                 <td>{{ row.ip_address }}</td>
                 <td>{{ row.operating_system }}</td>
@@ -42,12 +45,20 @@
                 <td>{{ row.backup_and_recovery }}</td>
                 <td>{{ row.note }}</td>
                 <td>
-                    <a href="/server_edit/{{ row.id }} ">修改</a>
-                    <form class="delete-form" method="post" action="/server_delete/{{ row.id }}" style="display: inline;">
-                      <button class="delete-button" type="submit">删除</button>
+                    <form method="POST" action="/server_connect/{{ row.id }}" style="display:inline;">
+                        <input type="hidden" name="username" value="{{ row.username }}">
+                        <input type="hidden" name="password" value="{{ row.password }}">
+                        <input type="hidden" name="ip_address" value="{{ row.ip_address }}">
+                        <button type="submit">连接</button>
                     </form>
 
+                    <a href="/server_edit/{{ row.id }} ">修改</a>
+                    <form class="delete-form" method="post" action="/server_delete/{{ row.id }}" style="display: inline;">
+                        <button class="delete-button" type="submit">删除</button>
+                    </form>
                 </td>
+
+
             </tr>
             {% endfor %}
         </tbody>
@@ -67,6 +78,9 @@
     <form method="post">
         <label>主机名</label>
         <input type="text" name="hostname" required>
+        <br>
+        <label>用户名</label>
+        <input type="text" name="username">
         <br>
         <label>密码</label>
         <input type="text" name="password">

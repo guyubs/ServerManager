@@ -1,4 +1,6 @@
 import random, pyodbc
+
+import paramiko
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_mail import Mail, Message
 
@@ -32,6 +34,7 @@ if not cursor.fetchone():
     cursor.execute("CREATE TABLE ServerInfo "
                    "(id int PRIMARY KEY IDENTITY(1,1), "
                    "hostname varchar(255), "
+                   "username varchar(255), "
                    "password varchar(255), "
                    "ip_address varchar(255), "
                    "operating_system varchar(255), "
@@ -207,48 +210,69 @@ def manage_server():
     cursor = conn.cursor()
 
     if request.method == 'POST':
-        if request.form.get('delete'):
-            # 获取 POST 请求中的表单数据
-            server_id = request.form['server_id']
+        # 获取 POST 请求中的表单数据
+        hostname = request.form['hostname']
+        username = request.form['username']
+        password = request.form['password']
+        ip_address = request.form['ip_address']
+        operating_system = request.form['operating_system']
+        os_version = request.form['os_version']
+        applications = request.form['applications']
+        hardware_configuration = request.form['hardware_configuration']
+        security_settings = request.form['security_settings']
+        logs_and_monitoring = request.form['logs_and_monitoring']
+        backup_and_recovery = request.form['backup_and_recovery']
+        note = request.form['note']
 
-            # 从 ServerInfo 表中删除指定服务器
-            cursor.execute("DELETE FROM ServerInfo WHERE id=?", (server_id,))
-            conn.commit()
+        # 将数据插入到 ServerInfo 表中
+        cursor.execute("INSERT INTO ServerInfo (hostname, username, password, ip_address, "
+                       "operating_system, os_version, applications, hardware_configuration, "
+                       "security_settings, logs_and_monitoring, backup_and_recovery, note) "
+                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                       (hostname, username, password, ip_address, operating_system, os_version,
+                        applications, hardware_configuration, security_settings,
+                        logs_and_monitoring, backup_and_recovery, note))
+        conn.commit()
 
-            # 显示成功消息
-            flash('服务器已删除！')
-        else:
-            # 获取 POST 请求中的表单数据
-            hostname = request.form['hostname']
-            password = request.form['password']
-            ip_address = request.form['ip_address']
-            operating_system = request.form['operating_system']
-            os_version = request.form['os_version']
-            applications = request.form['applications']
-            hardware_configuration = request.form['hardware_configuration']
-            security_settings = request.form['security_settings']
-            logs_and_monitoring = request.form['logs_and_monitoring']
-            backup_and_recovery = request.form['backup_and_recovery']
-            note = request.form['note']
-
-            # 将数据插入到 ServerInfo 表中
-            cursor.execute("INSERT INTO ServerInfo (hostname, password, ip_address, "
-                           "operating_system, os_version, applications, hardware_configuration, "
-                           "security_settings, logs_and_monitoring, backup_and_recovery, note) "
-                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                           (hostname, password, ip_address, operating_system, os_version,
-                            applications, hardware_configuration, security_settings,
-                            logs_and_monitoring, backup_and_recovery, note))
-            conn.commit()
-
-            # 显示成功消息
-            flash('服务器已添加！')
+        # 显示成功消息
+        flash('服务器已添加！')
 
     # 获取 ServerInfo 表中的所有数据
     cursor.execute("SELECT * FROM ServerInfo")
     data = cursor.fetchall()
 
     return render_template('manage_server.html', data=data)
+
+
+@app.route('/server_connect/<int:server_id>', methods=['POST'])
+def server_connect(server_id):
+    username = request.form.get('username')
+    password = request.form.get('password')
+    ip_address = request.form.get('ip_address')
+
+    # 连接服务器
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        ssh.connect(ip_address, username=username, password=password)
+    except paramiko.AuthenticationException:
+        return "Authentication failed, please verify your credentials"
+    except paramiko.SSHException as sshException:
+        return "Unable to establish SSH connection: %s" % sshException
+    except paramiko.Exception as e:
+        return "Exception in connecting to the server %s" % e
+
+    # 执行命令，获取连接到服务器获得的信息
+    stdin, stdout, stderr = ssh.exec_command('uname -a')
+    output = stdout.read()
+
+    # 关闭 SSH 连接
+    ssh.close()
+
+    # 将连接到服务器获得的信息渲染到一个新的 HTML 页面
+    return render_template('server_connect.html', output=output)
+
+
 
 
 @app.route('/server_delete/<int:server_id>', methods=['POST'])
@@ -258,7 +282,6 @@ def server_delete(server_id):
     conn.commit()
     flash('服务器已删除！')
     return redirect(url_for('manage_server'))
-
 
 
 @app.route('/server_edit/<int:id>', methods=['GET', 'POST'])
@@ -272,6 +295,7 @@ def server_edit(id):
     if request.method == 'POST':
         # 获取 POST 请求中的表单数据
         hostname = request.form['hostname']
+        username = request.form['username']
         password = request.form['password']
         ip_address = request.form['ip_address']
         operating_system = request.form['operating_system']
@@ -284,11 +308,11 @@ def server_edit(id):
         note = request.form['note']
 
         # 更新数据库中指定id的服务器信息
-        cursor.execute("UPDATE ServerInfo SET hostname=?, password=?, ip_address=?, "
+        cursor.execute("UPDATE ServerInfo SET hostname=?, username=?, password=?, ip_address=?, "
                        "operating_system=?, os_version=?, applications=?, hardware_configuration=?, "
                        "security_settings=?, logs_and_monitoring=?, backup_and_recovery=?, note=? "
                        "WHERE id=?",
-                       (hostname, password, ip_address, operating_system, os_version,
+                       (hostname, username, password, ip_address, operating_system, os_version,
                         applications, hardware_configuration, security_settings,
                         logs_and_monitoring, backup_and_recovery, note, id))
         conn.commit()
@@ -299,7 +323,6 @@ def server_edit(id):
 
     # 显示编辑服务器信息的表单
     return render_template('server_edit.html', data=server)
-
 
 
 if __name__ == '__main__':
