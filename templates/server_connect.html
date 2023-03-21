@@ -1,10 +1,27 @@
+<!-- server_connect.html -->
+
 <!DOCTYPE html>
 <html>
-<head>
-    <title>连接到服务器获得的信息</title>
-</head>
-<body>
-    <h1>连接到服务器获得的信息</h1>
-    <pre>{{ output }}</pre>
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <title>控制台</title>
+    </head>
+    <body>
+        <h1>控制台</h1>
+            <p><a href="{{ url_for('manage_server') }}">返回服务器列表</a></p>
+            <form action="/execute" method="POST">
+                <label for="command">命令:</label>
+                <input type="text" id="command" name="command"><br><br>
+                <input type="submit" value="执行">
+            </form>
+            <form action="/disconnect" method="POST">
+                <input type="submit" value="退出连接">
+            </form>
+        {% if result %}
+            <h2>结果:</h2>
+            <pre>{{ result }}</pre>
+        {% endif %}
+    </body>
 </html>
+
+

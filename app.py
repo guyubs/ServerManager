@@ -7,6 +7,8 @@ from flask_mail import Mail, Message
 app = Flask(__name__)
 app.secret_key = "secret key"  # 设置 secret key 以启用 flash 消息
 
+ssh_conn = None
+
 ############
 # 数据库配置
 ############
@@ -244,8 +246,10 @@ def manage_server():
     return render_template('manage_server.html', data=data)
 
 
-@app.route('/server_connect/<int:server_id>', methods=['POST'])
+@app.route('/server_connect/<int:server_id>', methods=['POST', 'GET'])
 def server_connect(server_id):
+    global ssh_conn
+
     username = request.form.get('username')
     password = request.form.get('password')
     ip_address = request.form.get('ip_address')
@@ -253,6 +257,7 @@ def server_connect(server_id):
     # 连接服务器
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
     try:
         ssh.connect(ip_address, username=username, password=password)
     except paramiko.AuthenticationException:
@@ -262,16 +267,38 @@ def server_connect(server_id):
     except paramiko.Exception as e:
         return "Exception in connecting to the server %s" % e
 
-    # 执行命令，获取连接到服务器获得的信息
-    stdin, stdout, stderr = ssh.exec_command('uname -a')
-    output = stdout.read()
+    ssh_conn = ssh
 
-    # 关闭 SSH 连接
-    ssh.close()
+    return render_template('server_connect.html')
 
-    # 将连接到服务器获得的信息渲染到一个新的 HTML 页面
-    return render_template('server_connect.html', output=output)
 
+@app.route('/execute', methods=['POST'])
+def execute():
+    global ssh_conn
+
+    command = request.form['command']
+
+    if ssh_conn:
+        stdin, stdout, stderr = ssh_conn.exec_command(command)
+        result = stdout.read().decode('utf-8')
+    else:
+        result = 'No SSH connection found.'
+
+    return render_template('server_connect.html', result=result)
+
+
+@app.route('/disconnect', methods=['POST'])
+def disconnect():
+    global ssh_conn
+
+    if ssh_conn:
+        ssh_conn.close()
+        ssh_conn = None
+        result = "SSH connection closed."
+    else:
+        result = 'No SSH connection found.'
+
+    return render_template('server_connect.html', result=result)
 
 
 

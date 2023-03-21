@@ -11,7 +11,7 @@
         <p>{{ username }}，欢迎来到操作面板！</p>
         <p><a href="{{ url_for('edit') }}">修改个人信息</a> <a href="{{ url_for('logout') }}">退出</a></p>
         <p>（此处显示软件主要功能）</p>
-        <p><a href="{{ url_for('manage_server') }}">管理服务器信息</a></p>
+        <p><a href="{{ url_for('manage_server') }}">服务器列表</a></p>
 
         {% with messages = get_flashed_messages() %}
             {% if messages %}
