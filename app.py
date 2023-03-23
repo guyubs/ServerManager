@@ -1,3 +1,4 @@
+import json
 import random, pyodbc
 
 import paramiko
@@ -8,6 +9,7 @@ app = Flask(__name__)
 app.secret_key = "secret key"  # 设置 secret key 以启用 flash 消息
 
 ssh_conn = None
+connected_clients = []
 
 ############
 # 数据库配置
@@ -77,7 +79,9 @@ def send_verification_code():
     flash('验证码已发送至您的邮箱。')
     return redirect(url_for('register'))
 
-
+###################################
+# 用户登录，注册，编辑，退出等
+###################################
 @app.route('/')
 def index():
     # 如果已登录，则跳转到 panel 页面
@@ -145,12 +149,7 @@ def register():
     return render_template('register.html')
 
 
-@app.route('/panel')
-def panel():
-    # 如果未登录，则跳转到登录页面
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('panel.html', username=session['username'])
+
 
 
 @app.route('/logout')
@@ -207,8 +206,36 @@ def edit():
     return render_template('edit.html', user=user)
 
 
+###################################
+# 登录后的Panel
+###################################
+@app.route('/panel')
+def panel():
+    # 如果未登录，则跳转到登录页面
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('panel.html', username=session['username'])
+
+
+###################################
+# 服务器管理界面。
+###################################
 @app.route('/manage_server', methods=['GET', 'POST'])
 def manage_server():
+    cursor = conn.cursor()
+
+    # 获取 ServerInfo 表中的所有数据
+    cursor.execute("SELECT * FROM ServerInfo")
+    data = cursor.fetchall()
+
+    return render_template('manage_server.html', data=data)
+
+
+###################################
+# 编辑服务器信息
+###################################
+@app.route('/add_server', methods=['GET', 'POST'])
+def add_server():
     cursor = conn.cursor()
 
     if request.method == 'POST':
@@ -239,67 +266,7 @@ def manage_server():
         # 显示成功消息
         flash('服务器已添加！')
 
-    # 获取 ServerInfo 表中的所有数据
-    cursor.execute("SELECT * FROM ServerInfo")
-    data = cursor.fetchall()
-
-    return render_template('manage_server.html', data=data)
-
-
-@app.route('/server_connect/<int:server_id>', methods=['POST', 'GET'])
-def server_connect(server_id):
-    global ssh_conn
-
-    username = request.form.get('username')
-    password = request.form.get('password')
-    ip_address = request.form.get('ip_address')
-
-    # 连接服务器
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-    try:
-        ssh.connect(ip_address, username=username, password=password)
-    except paramiko.AuthenticationException:
-        return "Authentication failed, please verify your credentials"
-    except paramiko.SSHException as sshException:
-        return "Unable to establish SSH connection: %s" % sshException
-    except paramiko.Exception as e:
-        return "Exception in connecting to the server %s" % e
-
-    ssh_conn = ssh
-
-    return render_template('server_connect.html')
-
-
-@app.route('/execute', methods=['POST'])
-def execute():
-    global ssh_conn
-
-    command = request.form['command']
-
-    if ssh_conn:
-        stdin, stdout, stderr = ssh_conn.exec_command(command)
-        result = stdout.read().decode('utf-8')
-    else:
-        result = 'No SSH connection found.'
-
-    return render_template('server_connect.html', result=result)
-
-
-@app.route('/disconnect', methods=['POST'])
-def disconnect():
-    global ssh_conn
-
-    if ssh_conn:
-        ssh_conn.close()
-        ssh_conn = None
-        result = "SSH connection closed."
-    else:
-        result = 'No SSH connection found.'
-
-    return render_template('server_connect.html', result=result)
-
+    return render_template('add_server.html')
 
 
 @app.route('/server_delete/<int:server_id>', methods=['POST'])
@@ -350,6 +317,111 @@ def server_edit(id):
 
     # 显示编辑服务器信息的表单
     return render_template('server_edit.html', data=server)
+
+
+###################################
+# 单个操作服务器
+###################################
+@app.route('/server_connect/<int:server_id>', methods=['POST', 'GET'])
+def server_connect(server_id):
+    global ssh_conn
+
+    username = request.form.get('username')
+    password = request.form.get('password')
+    ip_address = request.form.get('ip_address')
+
+    # 连接服务器
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        ssh.connect(ip_address, username=username, password=password)
+    except paramiko.AuthenticationException:
+        return "Authentication failed, please verify your credentials"
+    except paramiko.SSHException as sshException:
+        return "Unable to establish SSH connection: %s" % sshException
+    except paramiko.Exception as e:
+        return "Exception in connecting to the server %s" % e
+
+    ssh_conn = ssh
+
+    return render_template('server_connect.html')
+
+
+@app.route('/execute', methods=['POST'])
+def execute():
+    global ssh_conn
+
+    command = request.form['command']
+
+    if ssh_conn:
+        stdin, stdout, stderr = ssh_conn.exec_command(command)
+        result = stdout.read().decode('utf-8')
+    else:
+        result = 'No SSH connection found.'
+
+    return render_template('server_connect.html', result=result)
+
+
+@app.route('/disconnect', methods=['POST'])
+def disconnect():
+    global ssh_conn
+
+    if ssh_conn:
+        ssh_conn.close()
+        ssh_conn = None
+        result = "连接已断开"
+    else:
+        result = '当前没有任何连接'
+
+    return render_template('server_connect.html', result=result)
+
+
+###################################
+# 批量操作服务器
+###################################
+@app.route('/batch_operation', methods=['POST'])
+def batch_operation():
+    servers = request.form.get('servers')
+
+    if not servers:
+        flash('请选择要操作的服务器')
+        return redirect(url_for('index'))
+
+    server_data = json.loads(servers)
+    connected_servers = []
+    failed_servers = []
+
+    for server in server_data:
+        username = server['username']
+        password = server['password']
+        ip_address = server['ip_address']
+        hostname = server['hostname']
+
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        try:
+            ssh.connect(ip_address, username=username, password=password)
+            connected_servers.append({'hostname': hostname, 'username': username, 'password': password, 'ip_address': ip_address})
+            connected_clients.append(ssh)  # 将SSHClient对象添加到全局列表中
+        except Exception as e:
+            failed_servers.append({'server': server, 'error': str(e)})
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers)
+
+
+@app.route('/disconnect_servers', methods=['POST'])
+def disconnect_servers():
+    global connected_clients
+    if connected_clients:
+        for ssh in connected_clients:
+            ssh.close()
+        connected_clients.clear()
+        result = "连接已断开"
+    else:
+        result = '当前没有任何连接'
+    return render_template('batch_operation.html', connected_servers=[], failed_servers=[], result=result)
 
 
 if __name__ == '__main__':

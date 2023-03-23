@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h2>添加新服务器信息</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class=flashes>
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        <p><a href="{{ url_for('manage_server') }}">返回服务器列表</a></p>
+        <form method="post">
+            <label>主机名</label>
+            <input type="text" name="hostname" required>
+            <br>
+            <label>用户名</label>
+            <input type="text" name="username">
+            <br>
+            <label>密码</label>
+            <input type="text" name="password">
+            <br>
+            <label>IP地址</label>
+            <input type="text" name="ip_address">
+            <br>
+            <label>操作系统</label>
+            <input type="text" name="operating_system">
+            <br>
+            <label>操作系统版本</label>
+            <input type="text" name="os_version">
+            <br>
+            <label>应用程序</label>
+            <input type="text" name="applications">
+            <br>
+            <label>硬件配置</label>
+            <input type="text" name="hardware_configuration">
+            <br>
+            <label>安全设置</label>
+            <input type="text" name="security_settings">
+            <br>
+            <label>日志和监控</label>
+            <input type="text" name="logs_and_monitoring">
+            <br>
+            <label>备份和恢复</label>
+            <input type="text" name="backup_and_recovery">
+            <br>
+            <label>备注</label>
+            <input type="text" name="note">
+            <br>
+            <button type="submit">添加</button>
+        </form>
+</body>
+</html>

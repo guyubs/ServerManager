@@ -1,3 +1,5 @@
+<!-- manage_server.html -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,6 +13,7 @@
     <table>
         <thead>
             <tr>
+                <th>选择</th>
                 <th>ID</th>
                 <th>主机名</th>
                 <th>用户名</th>
@@ -31,6 +34,7 @@
 
             {% for row in data %}
             <tr>
+                <td><input type="checkbox" name="servers" value="{{ row.id }}"></td>
                 <td>{{ row.id }}</td>
                 <td>{{ row.hostname }}</td>
                 <td>{{ row.username }}</td>
@@ -51,18 +55,20 @@
                         <input type="hidden" name="ip_address" value="{{ row.ip_address }}">
                         <button type="submit">连接</button>
                     </form>
-
                     <a href="/server_edit/{{ row.id }} ">修改</a>
                     <form class="delete-form" method="post" action="/server_delete/{{ row.id }}" style="display: inline;">
                         <button class="delete-button" type="submit">删除</button>
                     </form>
                 </td>
-
-
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    <button id="batch-connect-btn">批量操作选中的服务器</button>
+
+    <form id="batch-form" method="POST" action="/batch_operation" style="display:none;">
+        <input id="batch-servers" type="hidden" name="servers">
+    </form>
 
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -73,48 +79,7 @@
             </ul>
         {% endif %}
     {% endwith %}
-
-    <h2>添加新服务器信息</h2>
-    <form method="post">
-        <label>主机名</label>
-        <input type="text" name="hostname" required>
-        <br>
-        <label>用户名</label>
-        <input type="text" name="username">
-        <br>
-        <label>密码</label>
-        <input type="text" name="password">
-        <br>
-        <label>IP地址</label>
-        <input type="text" name="ip_address">
-        <br>
-        <label>操作系统</label>
-        <input type="text" name="operating_system">
-        <br>
-        <label>操作系统版本</label>
-        <input type="text" name="os_version">
-        <br>
-        <label>应用程序</label>
-        <input type="text" name="applications">
-        <br>
-        <label>硬件配置</label>
-        <input type="text" name="hardware_configuration">
-        <br>
-        <label>安全设置</label>
-        <input type="text" name="security_settings">
-        <br>
-        <label>日志和监控</label>
-        <input type="text" name="logs_and_monitoring">
-        <br>
-        <label>备份和恢复</label>
-        <input type="text" name="backup_and_recovery">
-        <br>
-        <label>备注</label>
-        <input type="text" name="note">
-        <br>
-        <button type="submit">添加</button>
-    </form>
-
+    <a href="/add_server">添加新服务器</a>
     <script>
         const deleteForms = document.querySelectorAll('.delete-form');
 
@@ -129,8 +94,29 @@
                 }
             });
         });
+
+        const batchForm = document.getElementById('batch-form');
+        const batchServers = document.getElementById('batch-servers');
+        const batchConnectBtn = document.getElementById('batch-connect-btn');
+
+        batchConnectBtn.addEventListener('click', () => {
+            const selectedServers = document.querySelectorAll('input[name=servers]:checked');
+            const serverIds = Array.from(selectedServers).map((server) => server.value);
+            const serverData = Array.from(selectedServers).map((server) => {
+                const row = server.parentNode.parentNode;
+                return {
+                    hostname: row.cells[2].textContent,
+                    username: row.cells[3].textContent,
+                    password: row.cells[4].textContent,
+                    ip_address: row.cells[5].textContent
+                }
+            });
+
+            batchServers.value = JSON.stringify(serverData);
+            console.log(serverData);
+            //把 serverData 发送到后端
+            batchForm.submit(); // 如果需要提交表单，取消注释
+        });
     </script>
-
-
 </body>
 </html>

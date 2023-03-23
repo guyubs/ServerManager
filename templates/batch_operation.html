@@ -1,0 +1,48 @@
+<!-- batch_operation.html -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>批量操作结果</title>
+    </head>
+    <body>
+        <h1>批量操作结果</h1>
+        <p><a href="{{ url_for('manage_server') }}">返回服务器列表</a></p>
+        <form action="{{ url_for('disconnect_servers') }}" method="POST">
+            <button type="submit">断开连接</button>
+        </form>
+        <h2>连接成功的服务器：</h2>
+        <ul id="connected-servers">
+        </ul>
+        <h2>连接失败的服务器：</h2>
+        <ul id="failed-servers">
+        </ul>
+        {% if result %}
+            <h2>结果:</h2>
+            <pre>{{ result }}</pre>
+        {% endif %}
+
+        <script>
+            var connected_servers = {{ connected_servers | tojson }};
+            var failed_servers = {{ failed_servers | tojson }};
+
+            var connected_servers_list = document.getElementById("connected-servers");
+            connected_servers.forEach(function(server) {
+                var server_item = document.createElement("li");
+                var server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ")");
+                server_item.appendChild(server_text);
+                connected_servers_list.appendChild(server_item);
+            });
+
+            var failed_servers_list = document.getElementById("failed-servers");
+            failed_servers.forEach(function(item) {
+                var server = item["server"];
+                var error = item["error"];
+                var server_item = document.createElement("li");
+                var server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ") - " + error);
+                server_item.appendChild(server_text);
+                failed_servers_list.appendChild(server_item);
+            });
+        </script>
+    </body>
+</html>
