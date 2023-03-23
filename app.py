@@ -354,11 +354,14 @@ def execute():
 
     command = request.form['command']
 
-    if ssh_conn:
-        stdin, stdout, stderr = ssh_conn.exec_command(command)
-        result = stdout.read().decode('utf-8')
+    if not command:
+        result = '请输入要执行的命令。'
     else:
-        result = 'No SSH connection found.'
+        if ssh_conn:
+            stdin, stdout, stderr = ssh_conn.exec_command(command)
+            result = stdout.read().decode('utf-8')
+        else:
+            result = '当前没有任何连接。'
 
     return render_template('server_connect.html', result=result)
 
@@ -370,9 +373,9 @@ def disconnect():
     if ssh_conn:
         ssh_conn.close()
         ssh_conn = None
-        result = "连接已断开"
+        result = "连接已断开。"
     else:
-        result = '当前没有任何连接'
+        result = '当前没有任何连接。'
 
     return render_template('server_connect.html', result=result)
 
@@ -382,10 +385,13 @@ def disconnect():
 ###################################
 @app.route('/batch_operation', methods=['POST'])
 def batch_operation():
+    global connected_servers
+    global failed_servers
+
     servers = request.form.get('servers')
 
     if not servers:
-        flash('请选择要操作的服务器')
+        flash('请选择要操作的服务器。')
         return redirect(url_for('index'))
 
     server_data = json.loads(servers)
@@ -413,15 +419,49 @@ def batch_operation():
 
 @app.route('/disconnect_servers', methods=['POST'])
 def disconnect_servers():
+    global connected_servers
+    global failed_servers
+
+    connected_servers = []
+    failed_servers = []
+
     global connected_clients
     if connected_clients:
         for ssh in connected_clients:
             ssh.close()
         connected_clients.clear()
-        result = "连接已断开"
+        result = "连接已断开。"
     else:
-        result = '当前没有任何连接'
-    return render_template('batch_operation.html', connected_servers=[], failed_servers=[], result=result)
+        result = '当前没有任何连接。'
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+@app.route('/batch_execute', methods=['POST'])
+def batch_execute():
+    global connected_servers
+    global failed_servers
+
+    command = request.form.get('command')
+    result = ''
+
+    if not command:
+        result = '请输入要执行的命令。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                stdin, stdout, stderr = ssh.exec_command(command)
+                output = stdout.read().decode()
+                error = stderr.read().decode()
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+                if output:
+                    result += f"{output}\n"
+                if error:
+                    result += f"{error}\n"
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
 
 
 if __name__ == '__main__':

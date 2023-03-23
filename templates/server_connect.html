@@ -10,7 +10,7 @@
         <h1>控制台</h1>
             <p><a href="{{ url_for('manage_server') }}">返回服务器列表</a></p>
             <form action="/execute" method="POST">
-                <label for="command">命令:</label>
+                <label for="command">执行命令:</label>
                 <input type="text" id="command" name="command"><br><br>
                 <input type="submit" value="执行">
             </form>

@@ -53,7 +53,7 @@
                         <input type="hidden" name="username" value="{{ row.username }}">
                         <input type="hidden" name="password" value="{{ row.password }}">
                         <input type="hidden" name="ip_address" value="{{ row.ip_address }}">
-                        <button type="submit">连接</button>
+                        <button type="submit">登录</button>
                     </form>
                     <a href="/server_edit/{{ row.id }} ">修改</a>
                     <form class="delete-form" method="post" action="/server_delete/{{ row.id }}" style="display: inline;">
@@ -64,7 +64,7 @@
             {% endfor %}
         </tbody>
     </table>
-    <button id="batch-connect-btn">批量操作选中的服务器</button>
+    <button id="batch-connect-btn">批量登录选中的服务器</button>
 
     <form id="batch-form" method="POST" action="/batch_operation" style="display:none;">
         <input id="batch-servers" type="hidden" name="servers">

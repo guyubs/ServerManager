@@ -17,10 +17,17 @@
         <h2>连接失败的服务器：</h2>
         <ul id="failed-servers">
         </ul>
+        <form action="/batch_execute" method="POST">
+            <label for="command">执行命令:</label>
+            <input type="text" id="command" name="command"><br><br>
+            <input type="submit" value="执行">
+        </form>
+
         {% if result %}
             <h2>结果:</h2>
             <pre>{{ result }}</pre>
         {% endif %}
+
 
         <script>
             var connected_servers = {{ connected_servers | tojson }};
