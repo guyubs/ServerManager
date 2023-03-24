@@ -13,7 +13,10 @@
     <table>
         <thead>
             <tr>
-                <th>选择</th>
+                <th>
+                    <input type="checkbox" id="checkAll" />
+                    <label for="checkAll">全选/取消</label>
+                </th>
                 <th>ID</th>
                 <th>主机名</th>
                 <th>用户名</th>
@@ -81,6 +84,8 @@
     {% endwith %}
     <a href="/add_server">添加新服务器</a>
     <script>
+
+        // 删除提示
         const deleteForms = document.querySelectorAll('.delete-form');
 
         deleteForms.forEach((form) => {
@@ -95,13 +100,13 @@
             });
         });
 
+        // 把表格中的数据传给后端
         const batchForm = document.getElementById('batch-form');
         const batchServers = document.getElementById('batch-servers');
         const batchConnectBtn = document.getElementById('batch-connect-btn');
 
         batchConnectBtn.addEventListener('click', () => {
             const selectedServers = document.querySelectorAll('input[name=servers]:checked');
-            const serverIds = Array.from(selectedServers).map((server) => server.value);
             const serverData = Array.from(selectedServers).map((server) => {
                 const row = server.parentNode.parentNode;
                 return {
@@ -116,6 +121,43 @@
             console.log(serverData);
             //把 serverData 发送到后端
             batchForm.submit(); // 如果需要提交表单，取消注释
+        });
+
+
+        // 匹配全选与checkbox之间的关系
+        // 当全选变化时
+        function toggleCheckAll() {
+        const checkboxes = document.querySelectorAll('input[name=servers]');
+        const checkAll = document.getElementById('checkAll');
+
+        let allChecked = true;
+        checkboxes.forEach((checkbox) => {
+            if (!checkbox.checked) {
+                allChecked = false;
+            }
+        });
+
+        checkAll.checked = allChecked;
+        }
+
+        // 当checkbox变化时
+        function toggleAllCheckboxes() {
+            const checkboxes = document.querySelectorAll('input[name=servers]');
+            const checkAll = document.getElementById('checkAll');
+
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = checkAll.checked;
+            });
+        }
+
+        const checkAll = document.getElementById('checkAll');
+        checkAll.addEventListener('change', toggleAllCheckboxes);
+
+        const checkboxes = document.querySelectorAll('input[name=servers]');
+        checkboxes.forEach((checkbox) => {
+            checkbox.addEventListener('change', () => {
+                toggleCheckAll();
+            });
         });
     </script>
 </body>
