@@ -1,7 +1,8 @@
 import json
-import random, pyodbc
-
 import paramiko
+import pyodbc
+import random
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_mail import Mail, Message
 
@@ -55,10 +56,12 @@ if not cursor.fetchone():
 ############
 # 发送邮件配置
 ############
+email_sender = 'servermanagerapp@gmail.com'
+app_pw = 'belglusudxubkhdo'
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
-app.config['MAIL_USERNAME'] = 'servermanagerapp@gmail.com'  # 电子邮件地址
-app.config['MAIL_PASSWORD'] = 'abeqwuusddabgzot'  # 电子邮第三方app件密码，不是电子邮件密码，需要在邮箱设置。
+app.config['MAIL_USERNAME'] = email_sender  # 电子邮件地址
+app.config['MAIL_PASSWORD'] = app_pw  # 电子邮第三方app件密码，不是电子邮件密码，需要在邮箱设置。
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 mail = Mail(app)
@@ -78,6 +81,7 @@ def send_verification_code():
     mail.send(msg)
     flash('验证码已发送至您的邮箱。')
     return redirect(url_for('register'))
+
 
 ###################################
 # 用户登录，注册，编辑，退出等
@@ -147,9 +151,6 @@ def register():
         flash('注册成功，请登录')
         return redirect(url_for('login'))
     return render_template('register.html')
-
-
-
 
 
 @app.route('/logout')

@@ -17,9 +17,32 @@
         <h2>连接失败的服务器：</h2>
         <ul id="failed-servers">
         </ul>
+        <form method="POST" action="/batch_execute">
+          <input type="hidden" name="command" value="hostname">
+          <button type="submit">查看主机名</button>
+        </form>
+        <form method="POST" action="/batch_execute">
+          <input type="hidden" name="command" value="tasklist">
+          <button type="submit">查看进程</button>
+        </form>
+
+        <form action="/batch_execute" method="POST" onsubmit="editCommand()">
+            <label for="command">输入要杀的进程（含后缀）:</label>
+            <input type="text" id="command" name="command">
+            <input type="submit" value="杀进程">
+        </form>
+        <script>
+            function editCommand() {
+                let commandInput = document.getElementById("command");
+                let originalCommand = commandInput.value;
+                let newCommand = "taskkill /im " + originalCommand + " /f";
+                commandInput.value = newCommand;
+            }
+        </script>
+
         <form action="/batch_execute" method="POST">
             <label for="command">执行命令:</label>
-            <input type="text" id="command" name="command"><br><br>
+            <input type="text" id="command" name="command">
             <input type="submit" value="执行">
         </form>
 
@@ -30,26 +53,27 @@
 
 
         <script>
-            var connected_servers = {{ connected_servers | tojson }};
-            var failed_servers = {{ failed_servers | tojson }};
+            let connected_servers = {{ connected_servers | tojson }};
+            let failed_servers = {{ failed_servers | tojson }};
 
-            var connected_servers_list = document.getElementById("connected-servers");
+            let connected_servers_list = document.getElementById("connected-servers");
             connected_servers.forEach(function(server) {
-                var server_item = document.createElement("li");
-                var server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ")");
+                let server_item = document.createElement("li");
+                let server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ")");
                 server_item.appendChild(server_text);
                 connected_servers_list.appendChild(server_item);
             });
 
-            var failed_servers_list = document.getElementById("failed-servers");
+            let failed_servers_list = document.getElementById("failed-servers");
             failed_servers.forEach(function(item) {
-                var server = item["server"];
-                var error = item["error"];
-                var server_item = document.createElement("li");
-                var server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ") - " + error);
+                let server = item["server"];
+                let error = item["error"];
+                let server_item = document.createElement("li");
+                let server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ") - " + error);
                 server_item.appendChild(server_text);
                 failed_servers_list.appendChild(server_item);
             });
         </script>
+
     </body>
 </html>
