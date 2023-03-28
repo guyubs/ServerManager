@@ -466,6 +466,37 @@ def batch_execute():
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
 
 
+# 查询目录
+@app.route('/batch_show_directory_files', methods=['POST'])
+def batch_show_directory_files():
+    global connected_servers
+    global failed_servers
+
+    remote_dir_path = request.form['remote_dir_path']
+    result = ''
+
+    if not remote_dir_path:
+        result = '请输入目标文件夹地址。'
+    else:
+        for ssh in connected_clients:
+            try:
+                # 使用SFTP列出远程计算机上指定目录的文件和子目录
+                sftp = ssh.open_sftp()
+                files = sftp.listdir(remote_dir_path)
+                sftp.close()
+
+                result += f"{ssh.get_transport().getpeername()[0]} 上的文件和文件夹：\n"
+
+                for file in files:
+                    result += f"{file}\n"
+                result += '\n\n'  # 添加空行
+
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
 # 批量下载
 @app.route('/batch_download', methods=['POST'])
 def batch_download():

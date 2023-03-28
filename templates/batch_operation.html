@@ -38,16 +38,25 @@
                 <form method="POST" action="/batch_execute">
                     <input type="hidden" name="command" value="hostname">
                     <button type="submit">查看主机名</button>
-                </form>
+                </form><br>
                 <form method="POST" action="/batch_execute">
                     <input type="hidden" name="command" value="tasklist">
                     <button type="submit">查看进程</button>
-                </form>
+                </form><br>
                 <form action="/batch_execute" method="POST" onsubmit="editCommand()">
                     <label for="command">输入要杀的进程（含后缀）:</label>
                     <input type="text" id="command" name="command" style="width: 300px;">
                     <input type="submit" value="杀进程">
-                </form>
+                </form><br>
+
+                <form action="{{ url_for('batch_show_directory_files') }}" method="post">
+                    <div class="form-group">
+                        <label for="remote_dir_path">远程文件夹路径 （例如 C:\here）:</label>
+                        <input type="text" class="form-control" id="remote_dir_path" name="remote_dir_path">
+                    </div>
+                    <button type="submit" class="btn btn-primary">查询</button>
+                </form><br>
+
 
                 <form action="/batch_download" method="POST">
                     <label for="remote_file_path">远程文件路径（例如 D:\Yu\me.txt）：</label>
@@ -57,7 +66,7 @@
                     <input type="text" id="local_file_path" name="local_file_path"><br>
 
                     <input type="submit" value="下载">
-                </form>
+                </form><br>
 
 
                 <h2>执行命令：</h2>
@@ -65,7 +74,7 @@
                     <label for="command">执行命令:</label>
                     <input type="text" id="command" name="command" style="width: 1000px;">
                     <input type="submit" value="执行">
-                </form>
+                </form><br>
             </section>
 
             {% if result %}
