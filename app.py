@@ -2,6 +2,7 @@ import json
 import paramiko
 import pyodbc
 import random
+import os
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_mail import Mail, Message
@@ -465,8 +466,7 @@ def batch_execute():
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
 
 
-import os
-
+# 批量下载
 @app.route('/batch_download', methods=['POST'])
 def batch_download():
     global connected_servers
