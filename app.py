@@ -3,7 +3,7 @@ import paramiko
 import pyodbc
 import random
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_mail import Mail, Message
 
 app = Flask(__name__)
@@ -385,7 +385,7 @@ def disconnect():
 # 批量操作服务器
 ###################################
 @app.route('/batch_operation', methods=['POST'])
-def batch_operation():
+def batch_operation():  # 连接服务器
     global connected_servers
     global failed_servers
 
@@ -459,6 +459,45 @@ def batch_execute():
                     result += f"{output}\n"
                 if error:
                     result += f"{error}\n"
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+import os
+
+@app.route('/batch_download', methods=['POST'])
+def batch_download():
+    global connected_servers
+    global failed_servers
+
+    remote_file_path = request.form['remote_file_path']
+    local_file_path = request.form['local_file_path']
+    result = ''
+
+    if not remote_file_path or not local_file_path:
+        result = '请输入目标文件地址和本地保存地址。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                # 获取主机名前缀
+                stdin, stdout, stderr = ssh.exec_command('hostname')
+                hostname = stdout.read().decode().strip()
+
+                # 获取本地文件名和目录
+                local_dir = os.path.dirname(local_file_path)
+                local_filename = os.path.basename(local_file_path)
+
+                # 在本地文件名之前添加主机名前缀
+                local_file_path_with_hostname = os.path.join(local_dir, f"{hostname}_{local_filename}")
+
+                # 使用SFTP从远程计算机下载文件
+                sftp = ssh.open_sftp()
+                sftp.get(remote_file_path, local_file_path_with_hostname)
+                sftp.close()
+                result = "下载成功！"
             except Exception as e:
                 result += f"执行命令出错：{str(e)}\n"
 

@@ -3,77 +3,109 @@
 <html>
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>批量操作结果</title>
     </head>
+
     <body>
-        <h1>批量操作结果</h1>
-        <p><a href="{{ url_for('manage_server') }}">返回服务器列表</a></p>
-        <form action="{{ url_for('disconnect_servers') }}" method="POST">
-            <button type="submit">断开连接</button>
-        </form>
-        <h2>连接成功的服务器：</h2>
-        <ul id="connected-servers">
-        </ul>
-        <h2>连接失败的服务器：</h2>
-        <ul id="failed-servers">
-        </ul>
-        <form method="POST" action="/batch_execute">
-          <input type="hidden" name="command" value="hostname">
-          <button type="submit">查看主机名</button>
-        </form>
-        <form method="POST" action="/batch_execute">
-          <input type="hidden" name="command" value="tasklist">
-          <button type="submit">查看进程</button>
-        </form>
+        <header>
+            <h1>批量操作结果</h1>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('manage_server') }}">返回服务器列表</a></li>
+                </ul>
+                <form action="{{ url_for('disconnect_servers') }}" method="POST">
+                    <button type="submit">断开连接</button>
+                </form>
+            </nav>
+        </header>
 
-        <form action="/batch_execute" method="POST" onsubmit="editCommand()">
-            <label for="command">输入要杀的进程（含后缀）:</label>
-            <input type="text" id="command" name="command">
-            <input type="submit" value="杀进程">
-        </form>
-        <script>
-            function editCommand() {
-                let commandInput = document.getElementById("command");
-                let originalCommand = commandInput.value;
-                let newCommand = "taskkill /im " + originalCommand + " /f";
-                commandInput.value = newCommand;
-            }
+        <main>
+            <section>
+                <h2>连接成功的服务器：</h2>
+                <ul id="connected-servers">
+                </ul>
+            </section>
+
+            <section>
+                <h2>连接失败的服务器：</h2>
+                <ul id="failed-servers">
+                </ul>
+            </section>
+
+            <section>
+                <h2>操作：</h2>
+                <form method="POST" action="/batch_execute">
+                    <input type="hidden" name="command" value="hostname">
+                    <button type="submit">查看主机名</button>
+                </form>
+                <form method="POST" action="/batch_execute">
+                    <input type="hidden" name="command" value="tasklist">
+                    <button type="submit">查看进程</button>
+                </form>
+                <form action="/batch_execute" method="POST" onsubmit="editCommand()">
+                    <label for="command">输入要杀的进程（含后缀）:</label>
+                    <input type="text" id="command" name="command" style="width: 300px;">
+                    <input type="submit" value="杀进程">
+                </form>
+
+                <form action="/batch_download" method="POST">
+                    <label for="remote_file_path">远程文件路径（例如 D:\Yu\me.txt）：</label>
+                    <input type="text" id="remote_file_path" name="remote_file_path"><br>
+
+                    <label for="local_file_path">本地文件路径（例如 E:\try\copy_me.txt）：</label>
+                    <input type="text" id="local_file_path" name="local_file_path"><br>
+
+                    <input type="submit" value="下载">
+                </form>
+
+
+                <h2>执行命令：</h2>
+                <form action="/batch_execute" method="POST">
+                    <label for="command">执行命令:</label>
+                    <input type="text" id="command" name="command" style="width: 1000px;">
+                    <input type="submit" value="执行">
+                </form>
+            </section>
+
+            {% if result %}
+                <section>
+                    <h2>结果:</h2>
+                    <pre>{{ result }}</pre>
+                </section>
+            {% endif %}
+        </main>
+
+
+    <script>
+        let connected_servers = {{ connected_servers | tojson }};
+        let failed_servers = {{ failed_servers | tojson }};
+
+        let connected_servers_list = document.getElementById("connected-servers");
+        connected_servers.forEach(function(server) {
+            let server_item = document.createElement("li");
+            let server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ")");
+            server_item.appendChild(server_text);
+            connected_servers_list.appendChild(server_item);
+        });
+
+        let failed_servers_list = document.getElementById("failed-servers");
+        failed_servers.forEach(function(item) {
+            let server = item["server"];
+            let error = item["error"];
+            let server_item = document.createElement("li");
+            let server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ") - " + error);
+            server_item.appendChild(server_text);
+            failed_servers_list.appendChild(server_item);
+        });
+
+        // 杀进程，补全命令
+        function editCommand() {
+            let commandInput = document.getElementById("command");
+            let originalCommand = commandInput.value;
+            let newCommand = "taskkill /im " + originalCommand + " /f";
+            commandInput.value = newCommand;
+        }
         </script>
-
-        <form action="/batch_execute" method="POST">
-            <label for="command">执行命令:</label>
-            <input type="text" id="command" name="command">
-            <input type="submit" value="执行">
-        </form>
-
-        {% if result %}
-            <h2>结果:</h2>
-            <pre>{{ result }}</pre>
-        {% endif %}
-
-
-        <script>
-            let connected_servers = {{ connected_servers | tojson }};
-            let failed_servers = {{ failed_servers | tojson }};
-
-            let connected_servers_list = document.getElementById("connected-servers");
-            connected_servers.forEach(function(server) {
-                let server_item = document.createElement("li");
-                let server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ")");
-                server_item.appendChild(server_text);
-                connected_servers_list.appendChild(server_item);
-            });
-
-            let failed_servers_list = document.getElementById("failed-servers");
-            failed_servers.forEach(function(item) {
-                let server = item["server"];
-                let error = item["error"];
-                let server_item = document.createElement("li");
-                let server_text = document.createTextNode(server["hostname"] + " (" + server["ip_address"] + ") - " + error);
-                server_item.appendChild(server_text);
-                failed_servers_list.appendChild(server_item);
-            });
-        </script>
-
     </body>
 </html>
