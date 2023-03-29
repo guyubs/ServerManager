@@ -6,7 +6,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>批量操作结果</title>
     </head>
-
     <body>
         <header>
             <h1>批量操作结果</h1>
@@ -19,7 +18,6 @@
                 </form>
             </nav>
         </header>
-
         <main>
             <section>
                 <h2>连接成功的服务器：</h2>
@@ -32,7 +30,6 @@
                 <ul id="failed-servers">
                 </ul>
             </section>
-
             <section>
                 <h2>操作：</h2>
                 <form method="POST" action="/batch_execute">
@@ -48,7 +45,6 @@
                     <input type="text" id="command" name="command" style="width: 300px;">
                     <input type="submit" value="杀进程">
                 </form><br>
-
                 <form action="{{ url_for('batch_show_directory_files') }}" method="post">
                     <div class="form-group">
                         <label for="remote_dir_path">远程文件夹路径 （例如 C:\here）:</label>
@@ -56,18 +52,20 @@
                     </div>
                     <button type="submit" class="btn btn-primary">查询</button>
                 </form><br>
-
-
                 <form action="/batch_download" method="POST">
-                    <label for="remote_file_path">远程文件路径（例如 D:\Yu\me.txt）：</label>
+                    <label for="remote_file_path">远程文件路径（例如 D:\Yu\download_me.txt）：</label>
                     <input type="text" id="remote_file_path" name="remote_file_path"><br>
-
                     <label for="local_file_path">本地文件路径（例如 E:\try\copy_me.txt）：</label>
                     <input type="text" id="local_file_path" name="local_file_path"><br>
-
                     <input type="submit" value="下载">
                 </form><br>
-
+                <form action="/batch_upload" method="POST">
+                    <label for="local_file_path">本地待上传文件（例如 E:\try\upload_me.docx）：</label>
+                    <input type="text" id="local_file_path" name="local_file_path"><br>
+                    <label for="remote_file_path">目标位置（例如 C:\here\copy_me.docx）：</label>
+                    <input type="text" id="remote_file_path" name="remote_file_path"><br>
+                    <input type="submit" value="上传">
+                </form><br>
 
                 <h2>执行命令：</h2>
                 <form action="/batch_execute" method="POST">

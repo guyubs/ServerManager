@@ -13,6 +13,9 @@ app.secret_key = "secret key"  # 设置 secret key 以启用 flash 消息
 ssh_conn = None
 connected_clients = []
 
+global connected_servers
+global failed_servers
+
 ############
 # 数据库配置
 ############
@@ -533,6 +536,114 @@ def batch_download():
                 result += f"执行命令出错：{str(e)}\n"
 
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+# @app.route('/batch_upload', methods=['POST'])
+# def batch_upload():
+#     global connected_clients
+#     global failed_servers
+#
+#     local_file_path = request.form['local_file_path']
+#     remote_file_path = request.form['remote_file_path']
+#     result = ''
+#
+#     if not local_file_path or not remote_file_path:
+#         result = '请输入本地文件地址和目标文件夹地址。'
+#
+#     else:
+#         for ssh in connected_clients:
+#             try:
+#                 # 使用SFTP上传文件到远程计算机
+#                 sftp = ssh.open_sftp()
+#                 sftp.put(local_file_path, remote_file_path)
+#                 sftp.close()
+#                 result += f"{ssh.get_transport().getpeername()[0]} 上传成功！\n"
+#
+#             except Exception as e:
+#                 result += f"{ssh.get_transport().getpeername()[0]} 执行命令出错：{str(e)}\n"
+#
+#     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+# 有同名文件时取消
+# @app.route('/batch_upload', methods=['POST'])
+# def batch_upload():
+#     global connected_clients
+#     global failed_servers
+#
+#     local_file_path = request.form['local_file_path']
+#     remote_file_path = request.form['remote_file_path']
+#     result = ''
+#
+#     if not local_file_path or not remote_file_path:
+#         result = '请输入本地文件地址和目标文件夹地址。'
+#
+#     else:
+#         for ssh in connected_clients:
+#             try:
+#                 # 使用SFTP上传文件到远程计算机
+#                 sftp = ssh.open_sftp()
+#                 remote_filename = os.path.basename(remote_file_path)
+#                 remote_dirname = os.path.dirname(remote_file_path)
+#                 try:
+#                     # 检查目标文件夹是否已经存在同名文件
+#                     sftp.stat(remote_file_path)
+#                     result += f"{ssh.get_transport().getpeername()[0]} 目标文件夹已经存在同名文件，上传失败！\n"
+#                     # 如果存在同名文件，跳出循环，停止上传
+#                     break
+#                 except:
+#                     pass
+#                 sftp.put(local_file_path, remote_file_path)
+#                 sftp.close()
+#                 result += f"{ssh.get_transport().getpeername()[0]} 上传成功！\n"
+#
+#             except Exception as e:
+#                 result += f"{ssh.get_transport().getpeername()[0]} 执行命令出错：{str(e)}\n"
+#                 # 出现异常，跳出循环，停止上传
+#                 break
+#
+#     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+@app.route('/batch_upload', methods=['POST'])
+def batch_upload():
+    global connected_clients
+    global failed_servers
+
+    local_file_path = request.form['local_file_path']
+    remote_file_path = request.form['remote_file_path']
+    overwrite = request.form.get('overwrite')
+    result = ''
+
+    if not local_file_path or not remote_file_path:
+        result = '请输入本地文件地址和目标文件夹地址。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                # 使用SFTP上传文件到远程计算机
+                sftp = ssh.open_sftp()
+                try:
+                    sftp.stat(remote_file_path)
+                    if overwrite is None:
+                        return render_template('confirm_overwrite.html', local_file_path=local_file_path, remote_file_path=remote_file_path)
+                    elif overwrite == 'no':
+                        result = '上传已取消。'
+                        break
+                    else:
+                        pass
+                except IOError:
+                    pass
+                sftp.put(local_file_path, remote_file_path)
+                sftp.close()
+                result += f"{ssh.get_transport().getpeername()[0]} 上传成功！\n"
+
+            except Exception as e:
+                result += f"{ssh.get_transport().getpeername()[0]} 执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
 
 
 if __name__ == '__main__':
