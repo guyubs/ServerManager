@@ -33,13 +33,31 @@
             <section>
                 <h2>操作：</h2>
                 <form method="POST" action="/batch_execute">
-                    <input type="hidden" name="command" value="hostname">
-                    <button type="submit">查看主机名</button>
+                    <button type="submit" name="command" value="hostname">查看主机名</button>
                 </form><br>
                 <form method="POST" action="/batch_execute">
-                    <input type="hidden" name="command" value="tasklist">
-                    <button type="submit">查看进程</button>
+                    <button type="submit" name="command" value="tasklist">查看进程</button>
                 </form><br>
+                <form method="POST" action="/batch_execute">
+                    <button type="submit" name="command" value='typeperf "\Processor(_Total)\% Processor Time" -sc 1'>查询CPU占用率</button>
+                </form><br>
+                <form method="POST" action="/batch_execute">
+                    <button type="submit" name="command" value='typeperf "\Memory\Available MBytes" -sc 1'>查询内存占用</button>
+                </form><br>
+                <form method="POST" action="/batch_execute">
+                    <button type="submit" name="command" value='typeperf "\Network Interface(*)\Bytes Total/sec" -sc 1'>查询网络IO</button>
+                </form><br>
+                <form method="POST" action="/batch_execute">
+                    <button type="submit" name="command" value='typeperf "\PhysicalDisk(*)\Disk Bytes/sec" -sc 1'>查询磁盘IO</button>
+                </form><br>
+
+
+
+
+
+
+
+
                 <form action="/batch_execute" method="POST" onsubmit="editCommand()">
                     <label for="command">输入要杀的进程（含后缀）:</label>
                     <input type="text" id="command" name="command" style="width: 300px;">
