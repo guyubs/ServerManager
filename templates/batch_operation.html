@@ -51,16 +51,9 @@
                     <button type="submit" name="command" value='typeperf "\PhysicalDisk(*)\Disk Bytes/sec" -sc 1'>查询磁盘IO</button>
                 </form><br>
 
-
-
-
-
-
-
-
                 <form action="/batch_execute" method="POST" onsubmit="editCommand()">
-                    <label for="command">输入要杀的进程（含后缀）:</label>
-                    <input type="text" id="command" name="command" style="width: 300px;">
+                    <label for="kill_command">输入要杀的进程（含后缀）:</label>
+                    <input type="text" id="kill_command" name="command" style="width: 300px;">
                     <input type="submit" value="杀进程">
                 </form><br>
                 <form action="{{ url_for('batch_show_directory_files') }}" method="post">
@@ -84,6 +77,21 @@
                     <input type="text" id="remote_file_path" name="remote_file_path"><br>
                     <input type="submit" value="上传">
                 </form><br>
+                <form action="/batch_execute" method="POST" onsubmit="return myCommand()">
+                  <label for="command1">自定义调度名称</label>
+                  <input type="text" id="command1" name="command" style="width: 300px;"><br>
+                  <label for="command2">调度命令（含频率，时间等，如："python \"C:\Scripts\Empty Recycle Bin.py\"" /sc minute /mo 1）:</label><br>
+                  <input type="text" id="command2" name="command2" style="width: 1000px;">
+                  <input type="submit" value="执行">
+                </form><br>
+                <form method="POST" action="/batch_execute">
+                    <button type="submit" name="command" value='schtasks /query /fo LIST /v'>显示所有调度</button>
+                </form><br>
+                <form action="/batch_execute" method="POST" onsubmit="deleteSchedule()">
+                    <label for="delete_schedule">要删除的调度名称</label>
+                    <input type="text" id="delete_schedule" name="command" style="width: 300px;"><br>
+                    <input type="submit" value="执行">
+                </form>
 
                 <h2>执行命令：</h2>
                 <form action="/batch_execute" method="POST">
@@ -126,11 +134,30 @@
 
         // 杀进程，补全命令
         function editCommand() {
-            let commandInput = document.getElementById("command");
+            let commandInput = document.getElementById("kill_command");
             let originalCommand = commandInput.value;
             let newCommand = "taskkill /im " + originalCommand + " /f";
             commandInput.value = newCommand;
         }
+
+        // 删除调度
+        function deleteSchedule() {
+            let commandInput = document.getElementById("delete_schedule");
+            let originalCommand = commandInput.value;
+            let newCommand = "schtasks /delete /tn " + originalCommand + " /f ";
+            commandInput.value = newCommand;
+        }
+
+          // 自定义调度，接收两个inputs并改装
+        function myCommand() {
+            let commandInput1 = document.getElementById("command1");
+            let commandInput2 = document.getElementById("command2");
+            let originalCommand1 = commandInput1.value;
+            let originalCommand2 = commandInput2.value;
+            let newCommand = "schtasks /create /tn \"" + originalCommand1 + "\" /tr " + originalCommand2;
+            document.getElementById("command").value = newCommand;
+            commandInput1.value = newCommand;
+          }
         </script>
     </body>
 </html>
