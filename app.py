@@ -419,9 +419,6 @@ def batch_operation():  # 连接服务器
         except Exception as e:
             failed_servers.append({'server': server, 'error': str(e)})
 
-
-
-
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers)
 
 
@@ -578,8 +575,6 @@ def batch_upload():
                 result += f"{ssh.get_transport().getpeername()[0]} 执行命令出错：{str(e)}\n"
 
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
-
-
 
 
 if __name__ == '__main__':

@@ -87,11 +87,21 @@
                 <form method="POST" action="/batch_execute">
                     <button type="submit" name="command" value='schtasks /query /fo LIST /v'>显示所有调度</button>
                 </form><br>
+                <form action="/batch_execute" method="POST" onsubmit="findSchedule()">
+                    <label for="find_schedule">请输入要查询的调度</label>
+                    <input type="text" id="find_schedule" name="command" style="width: 300px;"><br>
+                    <input type="submit" value="执行">
+                </form><br>
+                <form action="/batch_execute" method="POST" onsubmit="runSchedule()">
+                    <label for="run_schedule">请输入需要立即执行的调度</label>
+                    <input type="text" id="run_schedule" name="command" style="width: 300px;"><br>
+                    <input type="submit" value="执行">
+                </form><br>
                 <form action="/batch_execute" method="POST" onsubmit="deleteSchedule()">
                     <label for="delete_schedule">要删除的调度名称</label>
                     <input type="text" id="delete_schedule" name="command" style="width: 300px;"><br>
                     <input type="submit" value="执行">
-                </form>
+                </form><br>
 
                 <h2>执行命令：</h2>
                 <form action="/batch_execute" method="POST">
@@ -145,6 +155,22 @@
             let commandInput = document.getElementById("delete_schedule");
             let originalCommand = commandInput.value;
             let newCommand = "schtasks /delete /tn " + originalCommand + " /f ";
+            commandInput.value = newCommand;
+        }
+
+        // 查询调度
+        function findSchedule() {
+            let commandInput = document.getElementById("find_schedule");
+            let originalCommand = commandInput.value;
+            let newCommand = "schtasks /query /tn " + originalCommand + " /v";
+            commandInput.value = newCommand;
+        }
+
+        // 立即实行
+        function runSchedule() {
+            let commandInput = document.getElementById("run_schedule");
+            let originalCommand = commandInput.value;
+            let newCommand = "schtasks /Run /tn " + originalCommand;
             commandInput.value = newCommand;
         }
 
