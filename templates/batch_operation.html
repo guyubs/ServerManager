@@ -77,13 +77,17 @@
                     <input type="text" id="remote_file_path" name="remote_file_path"><br>
                     <input type="submit" value="上传">
                 </form><br>
+
                 <form action="/batch_execute" method="POST" onsubmit="return myCommand()">
-                  <label for="command1">自定义调度名称</label>
-                  <input type="text" id="command1" name="command" style="width: 300px;"><br>
-                  <label for="command2">调度命令（含频率，时间等，如："python \"C:\Scripts\Empty Recycle Bin.py\"" /sc minute /mo 1）:</label><br>
-                  <input type="text" id="command2" name="command2" style="width: 1000px;">
-                  <input type="submit" value="执行">
+                    <label for="command1">自定义调度名称</label>
+                    <input type="text" id="command1" name="command" style="width: 300px;"><br>
+                    <label for="command2">执行失败后最大重试次数</label>
+                    <input type="text" id="command2" name="command2" style="width: 100px;"><br>
+                    <label for="command3">调度命令（含失败重试间隔，调度频率，时间等，如：(python \"C:\Scripts\Empty Recycle Bin.py\" || ping -n 20 localhost)" /sc daily /st 19:15</label><br>
+                    <input type="text" id="command3" name="command3" style="width: 1000px;">
+                    <input type="submit" value="执行">
                 </form><br>
+
                 <form method="POST" action="/batch_execute">
                     <button type="submit" name="command" value='schtasks /query /fo LIST /v'>显示所有调度</button>
                 </form><br>
@@ -174,13 +178,15 @@
             commandInput.value = newCommand;
         }
 
-          // 自定义调度，接收两个inputs并改装
+          // 自定义调度，接收inputs并改装
         function myCommand() {
             let commandInput1 = document.getElementById("command1");
             let commandInput2 = document.getElementById("command2");
+            let commandInput3 = document.getElementById("command3");
             let originalCommand1 = commandInput1.value;
             let originalCommand2 = commandInput2.value;
-            let newCommand = "schtasks /create /tn \"" + originalCommand1 + "\" /tr " + originalCommand2;
+            let originalCommand3 = commandInput3.value;
+            let newCommand = "schtasks /create /tn \"" + originalCommand1 + "\" /tr \"cmd /c for /l %i in (1,1," + originalCommand2 + ") do " + originalCommand3 + " /f /rl highest";
             document.getElementById("command").value = newCommand;
             commandInput1.value = newCommand;
           }
