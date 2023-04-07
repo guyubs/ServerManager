@@ -3,9 +3,11 @@ import paramiko
 import pyodbc
 import random
 import os
+import socket
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_mail import Mail, Message
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "secret key"  # 设置 secret key 以启用 flash 消息
@@ -26,9 +28,9 @@ conn = pyodbc.connect('Driver={SQL Server};Server=' + server + ';Database=' + da
 
 # 读取数据库信息
 cursor = conn.cursor()
-cursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='users'")
 
 # 检查数据库中是否存在users表。若没有则创建。
+cursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='users'")
 if not cursor.fetchone():
     cursor.execute("CREATE TABLE users "
                    "(id int PRIMARY KEY IDENTITY(1,1), "
@@ -55,6 +57,20 @@ if not cursor.fetchone():
                    "backup_and_recovery text, "
                    "note text)")
     conn.commit()
+
+
+# 检查数据库中是否存在operations表。若没有则创建。
+cursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='operations'")
+if not cursor.fetchone():
+    cursor.execute("CREATE TABLE operations "
+                   "(id int PRIMARY KEY IDENTITY(1,1), "
+                   "username varchar(255), "
+                   "hostname varchar(255), "
+                   "ip_address varchar(255), "
+                   "operation text, "
+                   "timestamp datetime DEFAULT GETDATE())")
+    conn.commit()
+
 
 
 ############
@@ -416,6 +432,7 @@ def batch_operation():  # 连接服务器
             ssh.connect(ip_address, username=username, password=password)
             connected_servers.append({'hostname': hostname, 'username': username, 'password': password, 'ip_address': ip_address})
             connected_clients.append(ssh)  # 将SSHClient对象添加到全局列表中
+
         except Exception as e:
             failed_servers.append({'server': server, 'error': str(e)})
 
@@ -441,6 +458,13 @@ def disconnect_servers():
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
 
 
+def save_operation(command, hostname, ip_address):
+    # 将用户操作添加到 operations 表
+    timestamp = datetime.now()  # 获取当前日期和时间
+    cursor.execute("INSERT INTO operations (username, hostname, ip_address, operation, timestamp) VALUES (?, ?, ?, ?, ?)",
+                   (session['username'], hostname, ip_address, command, timestamp))
+    conn.commit()
+
 @app.route('/batch_execute', methods=['POST'])
 def batch_execute():
     global connected_servers
@@ -461,6 +485,16 @@ def batch_execute():
                 result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
                 if output:
                     result += f"{output}\n"
+
+                    # 获取远程主机的IP地址和端口号
+                    ip, port = ssh.get_transport().getpeername()
+
+                    # 根据IP地址反向查找主机名
+                    hostname = socket.gethostbyaddr(ip)[0]
+
+                    # 将用户操作添加到 operations 表
+                    save_operation(command, hostname, ip)
+
                 if error:
                     result += f"{error}\n"
             except Exception as e:
@@ -486,6 +520,16 @@ def batch_show_directory_files():
                 # 使用SFTP列出远程计算机上指定目录的文件和子目录
                 sftp = ssh.open_sftp()
                 files = sftp.listdir(remote_dir_path)
+
+                # 获取远程主机的IP地址和端口号
+                ip, port = ssh.get_transport().getpeername()
+
+                # 根据IP地址反向查找主机名
+                hostname = socket.gethostbyaddr(ip)[0]
+
+                # 将用户操作添加到 operations 表
+                save_operation(remote_dir_path, hostname, ip)
+
                 sftp.close()
 
                 result += f"{ssh.get_transport().getpeername()[0]} 上的文件和文件夹：\n"
@@ -530,6 +574,16 @@ def batch_download():
                 # 使用SFTP从远程计算机下载文件
                 sftp = ssh.open_sftp()
                 sftp.get(remote_file_path, local_file_path_with_hostname)
+
+                # 获取远程主机的IP地址和端口号
+                ip, port = ssh.get_transport().getpeername()
+                # 根据IP地址反向查找主机名
+                hostname = socket.gethostbyaddr(ip)[0]
+                command = 'Download from ' + remote_file_path + ' to ' + local_file_path
+                # 将用户操作添加到 operations 表
+                save_operation(command, hostname, ip)
+
+
                 sftp.close()
                 result = "下载成功！"
             except Exception as e:
@@ -558,7 +612,17 @@ def batch_upload():
                 sftp = ssh.open_sftp()
                 try:
                     sftp.stat(remote_file_path)
+
                     if overwrite is None:
+
+                        # 获取远程主机的IP地址和端口号
+                        ip, port = ssh.get_transport().getpeername()
+                        # 根据IP地址反向查找主机名
+                        hostname = socket.gethostbyaddr(ip)[0]
+                        command = 'Upload from ' + local_file_path + ' to ' + remote_file_path
+                        # 将用户操作添加到 operations 表
+                        save_operation(command, hostname, ip)
+
                         return render_template('confirm_overwrite.html', local_file_path=local_file_path, remote_file_path=remote_file_path)
                     elif overwrite == 'no':
                         result = '上传已取消。'
