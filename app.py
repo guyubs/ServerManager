@@ -641,5 +641,37 @@ def batch_upload():
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
 
 
+###################################
+# 操作记录。
+###################################
+@app.route('/manage_operation', methods=['GET', 'POST'])
+def manage_operation():
+    cursor = conn.cursor()
+
+    # 获取 ServerInfo 表中的所有数据
+    cursor.execute("SELECT * FROM operations")
+    data = cursor.fetchall()
+
+    return render_template('manage_operation.html', data=data)
+
+
+@app.route('/delete_operation', methods=['POST'])
+def delete_operation():
+    operations_id = request.form.get('operations')
+    if operations_id == '[]':
+        flash('请选择要删除的记录。')
+        return redirect(url_for('manage_operation'))
+    operations_id_list = json.loads(operations_id)
+    for operation_id in operations_id_list:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM operations WHERE id=?", (operation_id,))
+            conn.commit()
+            flash(f'记录{operation_id}已删除！')
+        except Exception as e:
+            flash(f'记录{operation_id}删除失败！')
+    return redirect(url_for('manage_operation'))
+
+
 if __name__ == '__main__':
     app.run(debug=True)
