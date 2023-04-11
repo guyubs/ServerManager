@@ -12,7 +12,7 @@
     <a href="/panel">返回操作面板</a>
     <a href="/manage_operation">显示所有操作</a>
 
-    <!-- 搜索框 -->
+    <!-- 搜索前端表格 -->
     <div id="search-container">
         <select id="search-column">
             <option value="id">ID</option>
@@ -23,9 +23,52 @@
             <option value="timestamp">时间</option>
         </select>
         <input type="text" id="search-input" placeholder="搜索...">
-        <button onclick="search()">搜索</button>
+        <button onclick="search()">从前端搜索</button>
     </div>
 
+    <!-- 搜索数据库 -->
+    <div>
+        <h2>搜索数据库</h2>
+        <form action="/search" method="POST">
+            <label for="db_column">选择搜索列：</label>
+            <select name="db_column" id="db_column">
+                <option value="id">ID</option>
+                <option value="username">操作人</option>
+                <option value="hostname">主机名</option>
+                <option value="ip_address">IP地址</option>
+                <option value="operation">操作详情</option>
+                <option value="timestamp">时间</option>
+            </select>
+            <br>
+            <label for="db_keyword">关键词：</label>
+            <input type="text" name="db_keyword" id="db_keyword">
+            <br>
+            <input type="submit" value="搜索数据库">
+        </form>
+    </div>
+
+    <!-- 搜显示结果 -->
+    <!-- 分页控件 -->
+    <div class="pagination">
+        {% if pagination['page'] > 1 %}
+          <a href="/manage_operation?page={{ pagination['page'] - 1 }}">上一页</a>
+        {% endif %}
+
+        {% for p in range(1, pagination['page_count'] + 1) %}
+          {% if p == pagination['page'] %}
+            <strong>{{ p }}</strong>
+          {% else %}
+            <a href="/manage_operation?page={{ p }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if pagination['page'] < pagination['page_count'] %}
+          <a href="/manage_operation?page={{ pagination['page'] + 1 }}">下一页</a>
+        {% endif %}
+    </div>
+
+    <!-- 数据表格 -->
+    <h3>用户操作记录</h3>
     <table>
         <thead>
             <tr>
@@ -43,7 +86,6 @@
             </tr>
         </thead>
         <tbody>
-
             {% for row in data %}
             <tr>
                 <td><input type="checkbox" name="operations" value="{{ row.id }}"></td>
@@ -57,11 +99,15 @@
             {% endfor %}
         </tbody>
     </table>
+
+
+    <!-- 删除按钮 -->
     <button class="delete-button" id="batch-delete-btn">删除记录</button>
     <form class="delete-form" id="batch-form" method="POST" action="/delete_operation" style="display:none;">
         <input id="batch-operations" type="hidden" name="operations">
     </form>
 
+    <!-- 显示flash信息 -->
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <ul class=flashes>
@@ -73,7 +119,6 @@
     {% endwith %}
 
     <script>
-
         // 删除提示
         const batchDeleteBtn = document.getElementById('batch-delete-btn');
         const batchForm = document.getElementById('batch-form');

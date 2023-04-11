@@ -644,15 +644,8 @@ def batch_upload():
 ###################################
 # 操作记录。
 ###################################
-@app.route('/manage_operation', methods=['GET', 'POST'])
-def manage_operation():
-    cursor = conn.cursor()
 
-    # 获取 ServerInfo 表中的所有数据
-    cursor.execute("SELECT * FROM operations")
-    data = cursor.fetchall()
 
-    return render_template('manage_operation.html', data=data)
 
 
 @app.route('/delete_operation', methods=['POST'])
@@ -671,6 +664,79 @@ def delete_operation():
         except Exception as e:
             flash(f'记录{operation_id}删除失败！')
     return redirect(url_for('manage_operation'))
+
+
+@app.route('/manage_operation', methods=['GET', 'POST'])
+def manage_operation():
+    cursor = conn.cursor()
+
+    # 获取 ServerInfo 表中的所有数据
+    cursor.execute("SELECT * FROM operations")
+    data = cursor.fetchall()
+
+    # 分页
+    page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
+    current_data, pagination = paginate(data, page)
+
+    return render_template('manage_operation.html', data=current_data, pagination=pagination)
+
+
+###################################
+# 搜索操作记录数据库。
+###################################
+
+
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    if request.method == 'POST':
+        column = request.form.get('db_column')
+        keyword = request.form.get('db_keyword')
+        if column and keyword:
+            data = search_db(column, keyword)
+
+            # 分页
+            page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
+            current_data, pagination = paginate(data, page)
+
+
+            return render_template('manage_operation.html', data=current_data, pagination=pagination)
+
+    return render_template('manage_operation.html')
+
+
+def paginate(data, page, per_page=50):
+    data_count = len(data)  # 数据总量
+    page_count = (data_count - 1) // per_page + 1  # 总页数
+    start = (page - 1) * per_page  # 当前页数据起始下标
+    end = start + per_page  # 当前页数据终止下标
+
+    # 获取当前页的数据
+    current_data = data[start:end]
+
+    pagination = {
+        'page': page,
+        'per_page': per_page,
+        'data_count': data_count,
+        'page_count': page_count,
+        'start': start,
+        'end': end
+    }
+
+    return current_data, pagination
+
+
+# 定义数据库操作函数
+def search_db(column, keyword):
+    cursor = conn.cursor()
+    if column == 'timestamp':  # 如果搜索的是时间列
+        sql = "SELECT * FROM operations WHERE CONVERT(varchar(100), timestamp, 120) LIKE ?"
+    else:  # 否则搜索其他列
+        sql = "SELECT * FROM operations WHERE {} LIKE ?".format(column)
+    value = ("%" + keyword + "%",)
+    cursor.execute(sql, value)
+    result = cursor.fetchall()
+    return result
+
 
 
 if __name__ == '__main__':
