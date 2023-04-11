@@ -8,8 +8,24 @@
     <link rel="stylesheet" type="text/css" href="/static/css/style.css">
 </head>
 <body>
-    <h1>户操作记录</h1>
+    <h1>用户操作记录</h1>
     <a href="/panel">返回操作面板</a>
+    <a href="/manage_operation">显示所有操作</a>
+
+    <!-- 搜索框 -->
+    <div id="search-container">
+        <select id="search-column">
+            <option value="id">ID</option>
+            <option value="username">操作人</option>
+            <option value="hostname">主机名</option>
+            <option value="ip_address">IP地址</option>
+            <option value="operation">操作详情</option>
+            <option value="timestamp">时间</option>
+        </select>
+        <input type="text" id="search-input" placeholder="搜索...">
+        <button onclick="search()">搜索</button>
+    </div>
+
     <table>
         <thead>
             <tr>
@@ -42,12 +58,9 @@
         </tbody>
     </table>
     <button class="delete-button" id="batch-delete-btn">删除记录</button>
-
-
     <form class="delete-form" id="batch-form" method="POST" action="/delete_operation" style="display:none;">
         <input id="batch-operations" type="hidden" name="operations">
     </form>
-
 
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -118,6 +131,51 @@
                 toggleCheckAll();
             });
         });
+
+        // ##############
+        // 前端搜索，不经过数据库和后端
+        // ##############
+        function search() {
+            // 获取搜索框中输入的关键词和选中的列
+            const keyword = document.getElementById('search-input').value.toLowerCase();
+            const column = document.getElementById('search-column').value;
+
+            // 获取所有的表格行
+            const rows = document.querySelectorAll('tbody tr');
+
+            // 遍历所有的表格行，如果关键词不在当前列中，就将该行隐藏，否则显示该行
+            rows.forEach((row) => {
+                const cell = row.querySelector(`td:nth-child(${columnIndex(column)})`);
+                const content = cell.textContent.toLowerCase();
+
+                if (content.includes(keyword)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // 根据列名获取列的索引
+        function columnIndex(column) {
+            switch (column) {
+                case 'id':
+                    return 2;
+                case 'username':
+                    return 3;
+                case 'hostname':
+                    return 4;
+                case 'ip_address':
+                    return 5;
+                case 'operation':
+                    return 6;
+                case 'timestamp':
+                    return 7;
+                default:
+                    return 0;
+            }
+        }
+
     </script>
 </body>
 </html>
