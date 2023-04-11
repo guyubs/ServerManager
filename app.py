@@ -644,10 +644,6 @@ def batch_upload():
 ###################################
 # 操作记录。
 ###################################
-
-
-
-
 @app.route('/delete_operation', methods=['POST'])
 def delete_operation():
     operations_id = request.form.get('operations')
@@ -684,8 +680,6 @@ def manage_operation():
 ###################################
 # 搜索操作记录数据库。
 ###################################
-
-
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     if request.method == 'POST':
@@ -697,7 +691,6 @@ def search():
             # 分页
             page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
             current_data, pagination = paginate(data, page)
-
 
             return render_template('manage_operation.html', data=current_data, pagination=pagination)
 
@@ -736,7 +729,6 @@ def search_db(column, keyword):
     cursor.execute(sql, value)
     result = cursor.fetchall()
     return result
-
 
 
 if __name__ == '__main__':
