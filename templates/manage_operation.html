@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <title>欢迎来到用户操作记录</title>
     <link rel="stylesheet" type="text/css" href="/static/css/style.css">
+
 </head>
 <body>
     <h1>用户操作记录</h1>
@@ -67,38 +68,58 @@
         {% endif %}
     </div>
 
-    <!-- 数据表格 -->
-    <h3>用户操作记录</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>
-                    <input type="checkbox" id="checkAll" />
-                    <label for="checkAll">全选/取消</label>
-                </th>
-                <th>ID</th>
-                <th>操作人</th>
-                <th>主机名</th>
-                <th>IP地址</th>
-                <th>操作详情</th>
-                <th>时间</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in data %}
-            <tr>
-                <td><input type="checkbox" name="operations" value="{{ row.id }}"></td>
-                <td>{{ row.id }}</td>
-                <td>{{ row.username }}</td>
-                <td>{{ row.hostname }}</td>
-                <td>{{ row.ip_address }}</td>
-                <td>{{ row.operation }}</td>
-                <td>{{ row.timestamp }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+
+<!-- 数据表格 -->
+<h3>用户操作记录</h3>
+<table>
+  <thead>
+    <tr>
+      <th>
+        <input type="checkbox" id="checkAll" />
+        <label for="checkAll">全选/取消</label>
+      </th>
+      <th class="sortable" data-column="id">ID <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="username">操作人 <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="hostname">主机名 <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="ip_address">IP地址 <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="operation">操作详情 <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="timestamp">时间 <span class="sort-arrow"></span></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in data %}
+    <tr>
+      <td><input type="checkbox" name="operations" value="{{ row.id }}"></td>
+      <td>{{ row.id }}</td>
+      <td>{{ row.username }}</td>
+      <td>{{ row.hostname }}</td>
+      <td>{{ row.ip_address }}</td>
+      <td>{{ row.operation }}</td>
+      <td>{{ row.timestamp }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+    <!-- 分页控件 -->
+    <div class="pagination">
+        {% if pagination['page'] > 1 %}
+          <a href="/manage_operation?page={{ pagination['page'] - 1 }}">上一页</a>
+        {% endif %}
+
+        {% for p in range(1, pagination['page_count'] + 1) %}
+          {% if p == pagination['page'] %}
+            <strong>{{ p }}</strong>
+          {% else %}
+            <a href="/manage_operation?page={{ p }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if pagination['page'] < pagination['page_count'] %}
+          <a href="/manage_operation?page={{ pagination['page'] + 1 }}">下一页</a>
+        {% endif %}
+    </div><br><br>
 
 
     <!-- 删除按钮 -->
@@ -221,6 +242,38 @@
             }
         }
 
+        // 表格排序
+        const table = document.querySelector('table');
+        const sortArrows = document.querySelectorAll('.sort-arrow');
+
+        function sortTable(columnIndex, isAscending) {
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const sortedRows = rows.sort((row1, row2) => {
+            const cellValue1 = row1.querySelectorAll('td')[columnIndex].textContent;
+            const cellValue2 = row2.querySelectorAll('td')[columnIndex].textContent;
+            if (columnIndex === 1) {
+                // If sorting by ID column, parse as numbers
+                const id1 = parseInt(cellValue1);
+                const id2 = parseInt(cellValue2);
+                return isAscending ? id1 - id2 : id2 - id1;
+            } else {
+                // Otherwise, compare as strings
+                return isAscending ? cellValue1.localeCompare(cellValue2) : cellValue2.localeCompare(cellValue1);
+            }
+          });
+            table.querySelector('tbody').innerHTML = '';
+            sortedRows.forEach(row => table.querySelector('tbody').appendChild(row));
+        }
+
+        sortArrows.forEach(arrow => {
+            arrow.addEventListener('click', () => {
+                const columnIndex = arrow.closest('th').cellIndex;
+                const isAscending = !arrow.classList.contains('asc');
+                sortArrows.forEach(a => a.classList.remove('asc', 'desc'));
+                arrow.classList.add(isAscending ? 'asc' : 'desc');
+                sortTable(columnIndex, isAscending);
+            });
+        });
     </script>
 </body>
 </html>
