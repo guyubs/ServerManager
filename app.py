@@ -8,6 +8,7 @@ import socket
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_mail import Mail, Message
 from datetime import datetime
+from flask_caching import Cache
 
 app = Flask(__name__)
 app.secret_key = "secret key"  # 设置 secret key 以启用 flash 消息
@@ -72,7 +73,6 @@ if not cursor.fetchone():
     conn.commit()
 
 
-
 ############
 # 发送邮件配置
 ############
@@ -101,6 +101,9 @@ def send_verification_code():
     mail.send(msg)
     flash('验证码已发送至您的邮箱。')
     return redirect(url_for('register'))
+
+
+
 
 
 ###################################
@@ -642,6 +645,12 @@ def batch_upload():
 
 
 ###################################
+# 缓存
+###################################
+cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+
+
+###################################
 # 操作记录。
 ###################################
 @app.route('/delete_operation', methods=['POST'])
@@ -662,8 +671,16 @@ def delete_operation():
     return redirect(url_for('manage_operation'))
 
 
+@cache.cached(timeout=300, key_prefix='manage_operation')
 @app.route('/manage_operation', methods=['GET', 'POST'])
 def manage_operation():
+    # 检查缓存中是否已经有数据
+    cached_data = cache.get('manage_operation')
+    if cached_data is not None:
+        print("从缓存中检索到数据。")
+        return cached_data
+
+    # 连接数据库
     cursor = conn.cursor()
 
     # 获取 ServerInfo 表中的所有数据
@@ -674,29 +691,46 @@ def manage_operation():
     page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
     current_data, pagination = paginate(data, page)
 
+    # 缓存数据以供未来的请求
+    cache.set('manage_operation', render_template('manage_operation.html', data=current_data, pagination=pagination),
+              timeout=300)
+
     return render_template('manage_operation.html', data=current_data, pagination=pagination)
 
 
 ###################################
 # 搜索操作记录数据库。
 ###################################
+@cache.cached(timeout=300, key_prefix='search')
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     if request.method == 'POST':
         column = request.form.get('db_column')
         keyword = request.form.get('db_keyword')
         if column and keyword:
+            # 尝试从缓存中获取数据
+            cache_key = f"search:{column}:{keyword}"
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                print("从缓存中检索到数据。")
+                return cached_data
+
             data = search_db(column, keyword)
 
             # 分页
             page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
             current_data, pagination = paginate(data, page)
 
+            # 将查询结果缓存起来
+            cache.set(cache_key, render_template('manage_operation.html', data=current_data, pagination=pagination),
+                      timeout=300)
+
             return render_template('manage_operation.html', data=current_data, pagination=pagination)
 
     return render_template('manage_operation.html')
 
 
+# 分页
 def paginate(data, page, per_page=50):
     data_count = len(data)  # 数据总量
     page_count = (data_count - 1) // per_page + 1  # 总页数
@@ -729,6 +763,7 @@ def search_db(column, keyword):
     cursor.execute(sql, value)
     result = cursor.fetchall()
     return result
+
 
 
 if __name__ == '__main__':

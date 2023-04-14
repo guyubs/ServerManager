@@ -29,24 +29,24 @@
 
     <!-- 搜索数据库 -->
     <div>
-        <h2>搜索数据库</h2>
-        <form action="/search" method="POST">
-            <label for="db_column">选择搜索列：</label>
-            <select name="db_column" id="db_column">
-                <option value="id">ID</option>
-                <option value="username">操作人</option>
-                <option value="hostname">主机名</option>
-                <option value="ip_address">IP地址</option>
-                <option value="operation">操作详情</option>
-                <option value="timestamp">时间</option>
-            </select>
-            <br>
-            <label for="db_keyword">关键词：</label>
-            <input type="text" name="db_keyword" id="db_keyword">
-            <br>
-            <input type="submit" value="搜索数据库">
-        </form>
-    </div>
+    <h2>搜索数据库</h2>
+    <form action="/search" method="POST" onsubmit="return validateForm()">
+        <label for="db_column">选择搜索列：</label>
+        <select name="db_column" id="db_column">
+            <option value="id">ID</option>
+            <option value="username">操作人</option>
+            <option value="hostname">主机名</option>
+            <option value="ip_address">IP地址</option>
+            <option value="operation">操作详情</option>
+            <option value="timestamp">时间</option>
+        </select>
+        <br>
+        <label for="db_keyword">关键词：</label>
+        <input type="text" name="db_keyword" id="db_keyword">
+        <br>
+        <input type="submit" value="搜索数据库">
+    </form>
+</div>
 
     <!-- 搜显示结果 -->
     <!-- 分页控件 -->
@@ -274,6 +274,16 @@
                 sortTable(columnIndex, isAscending);
             });
         });
+
+        // input为空禁止提交
+        function validateForm() {
+            let keyword = document.getElementById("db_keyword").value;
+            if (keyword.trim() === "") {
+                alert("关键词不能为空");
+                return false;
+            }
+            return true;
+        }
     </script>
 </body>
 </html>
