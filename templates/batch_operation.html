@@ -32,6 +32,7 @@
             </section>
             <section>
                 <h2>操作：</h2>
+                <h4>查询操作：</h4>
                 <form method="POST" action="/batch_execute">
                     <button type="submit" name="command" value="hostname">查看主机名</button>
                 </form><br>
@@ -51,11 +52,14 @@
                     <button type="submit" name="command" value='typeperf "\PhysicalDisk(*)\Disk Bytes/sec" -sc 1'>查询磁盘IO</button>
                 </form><br>
 
+                <h4>杀进程：</h4>
                 <form action="/batch_execute" method="POST" onsubmit="editCommand()">
                     <label for="kill_command">输入要杀的进程（含后缀）:</label>
                     <input type="text" id="kill_command" name="command" style="width: 300px;">
                     <input type="submit" value="杀进程">
                 </form><br>
+
+                <h4>上传下载：</h4>
                 <form action="{{ url_for('batch_show_directory_files') }}" method="post">
                     <div class="form-group">
                         <label for="remote_dir_path">远程文件夹路径 （例如 C:\here）:</label>
@@ -78,6 +82,7 @@
                     <input type="submit" value="上传">
                 </form><br>
 
+                <h4>调度：</h4>
                 <form action="/batch_execute" method="POST" onsubmit="return myCommand()">
                     <label for="command1">自定义调度名称</label>
                     <input type="text" id="command1" name="command" style="width: 300px;"><br>
@@ -101,9 +106,26 @@
                     <input type="text" id="run_schedule" name="command" style="width: 300px;"><br>
                     <input type="submit" value="执行">
                 </form><br>
+
+
                 <form action="/batch_execute" method="POST" onsubmit="deleteSchedule()">
                     <label for="delete_schedule">要删除的调度名称</label>
                     <input type="text" id="delete_schedule" name="command" style="width: 300px;"><br>
+                    <input type="submit" value="执行">
+                </form><br>
+
+                <h4>读取、编辑文件：</h4>
+                <form action="/read_file" method="POST">
+                    <label for="read_file_path">文件路径(如C:/Scripts/edit_me.txt)</label>
+                    <input type="text" id="read_file_path" name="read_file_path" style="width: 500px;">
+                    <input type="submit" value="执行">
+                </form><br>
+
+                <form action="/edit_file" method="POST">
+                    <label for="edit_file_path">文件路径(如C:/Scripts/edit_me.txt)</label>
+                    <input type="text" id="edit_file_path" name="edit_file_path" style="width: 500px;"><br>
+                    <label for="new_file_content">新内容</label>
+                    <textarea id="new_file_content" name="new_file_content" style="width: 1000px; height: 200px;"></textarea>
                     <input type="submit" value="执行">
                 </form><br>
 
@@ -122,7 +144,6 @@
                 </section>
             {% endif %}
         </main>
-
 
     <script>
         let connected_servers = {{ connected_servers | tojson }};

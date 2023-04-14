@@ -468,6 +468,7 @@ def save_operation(command, hostname, ip_address):
                    (session['username'], hostname, ip_address, command, timestamp))
     conn.commit()
 
+
 @app.route('/batch_execute', methods=['POST'])
 def batch_execute():
     global connected_servers
@@ -500,6 +501,83 @@ def batch_execute():
 
                 if error:
                     result += f"{error}\n"
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+@app.route('/read_file', methods=['POST'])
+def read_file():
+    global connected_servers
+    global failed_servers
+
+    file_path = request.form.get('read_file_path')
+    result = ''
+
+    if not file_path:
+        result = '请输入要执行的命令。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                sftp = ssh.open_sftp()
+                remote_file = sftp.open(file_path, 'r')
+                # output = remote_file.read()
+                output = remote_file.read().decode('utf-8')
+
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+
+                if output:
+                    result += f"{output}\n"
+
+                    # 获取远程主机的IP地址和端口号
+                    ip, port = ssh.get_transport().getpeername()
+
+                    # 根据IP地址反向查找主机名
+                    hostname = socket.gethostbyaddr(ip)[0]
+
+                    # 将用户操作添加到 operations 表
+                    save_operation('Read' + file_path, hostname, ip)
+
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+@app.route('/edit_file', methods=['POST'])
+def edit_file():
+    global connected_servers
+    global failed_servers
+
+    file_path = request.form.get('edit_file_path')
+    new_content = request.form.get('new_file_content')
+    result = ''
+
+    if not file_path or not new_content:
+        result = '请输入要执行的命令。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                sftp = ssh.open_sftp()
+                remote_file = sftp.open(file_path, 'w')
+                remote_file.write(new_content)
+                remote_file.close()
+
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+                result += f"文件 {file_path} 编辑成功！\n"
+
+                # 获取远程主机的IP地址和端口号
+                ip, port = ssh.get_transport().getpeername()
+
+                # 根据IP地址反向查找主机名
+                hostname = socket.gethostbyaddr(ip)[0]
+
+                # 将用户操作添加到 operations 表
+                save_operation('Edit' + file_path, hostname, ip)
+
             except Exception as e:
                 result += f"执行命令出错：{str(e)}\n"
 
@@ -763,7 +841,6 @@ def search_db(column, keyword):
     cursor.execute(sql, value)
     result = cursor.fetchall()
     return result
-
 
 
 if __name__ == '__main__':
