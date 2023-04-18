@@ -1,0 +1,280 @@
+<!-- manage_operation.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>欢迎来文件编辑记录</title>
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css">
+
+</head>
+<body>
+    <h1>文件编辑记录</h1>
+    <a href="/panel">返回操作面板</a>
+    <a href="/file_edit_history">显示所有记录</a>
+
+    <!-- 搜索数据库 -->
+    <div>
+    <h2>搜索数据库</h2>
+    <form action="/search_db_files" method="POST" onsubmit="return validateForm()">
+        <label for="db_column">选择搜索列：</label>
+        <select name="db_column" id="db_column">
+            <option value="id">ID</option>
+            <option value="editor">操作人</option>
+            <option value="hostname">主机名</option>
+            <option value="username">用户名</option>
+            <option value="password">密码</option>
+            <option value="ip_address">IP地址</option>
+            <option value="FilePath">文件路径</option>
+            <option value="Content">内容</option>
+            <option value="timestamp">时间</option>
+        </select>
+        <br>
+        <label for="db_keyword">关键词：</label>
+        <input type="text" name="db_keyword" id="db_keyword">
+        <br>
+        <input type="submit" value="搜索数据库">
+    </form>
+</div>
+
+    <!-- 分页控件 -->
+    <div class="pagination">
+        {% if pagination['page'] > 1 %}
+          <a href="/file_edit_history?page={{ pagination['page'] - 1 }}">上一页</a>
+        {% endif %}
+
+        {% for p in range(1, pagination['page_count'] + 1) %}
+          {% if p == pagination['page'] %}
+            <strong>{{ p }}</strong>
+          {% else %}
+            <a href="/file_edit_history?page={{ p }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if pagination['page'] < pagination['page_count'] %}
+          <a href="/file_edit_history?page={{ pagination['page'] + 1 }}">下一页</a>
+        {% endif %}
+    </div>
+
+<!-- 数据表格 -->
+<h3>文件编辑记录</h3>
+<table>
+  <thead>
+    <tr>
+      <th>
+        <input type="checkbox" id="checkAll" />
+        <label for="checkAll">全选/取消</label>
+      </th>
+      <th class="sortable" data-column="id">ID <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="editor">操作人 <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="hostname">主机名 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="username">用户名 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="password">密码 <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="ip_address">IP地址 <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="FilePath">文件路径 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="Content">文件内容 <span class="sort-arrow"></span></th>
+      <th class="sortable" data-column="timestamp">时间 <span class="sort-arrow"></span></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in data %}
+    <tr>
+      <td><input type="checkbox" name="files" value="{{ row.id }}"></td>
+      <td>{{ row.id }}</td>
+      <td>{{ row.editor }}</td>
+      <td>{{ row.hostname }}</td>
+        <td>{{ row.username }}</td>
+        <td>{{ row.password }}</td>
+      <td>{{ row.ip_address }}</td>
+      <td>{{ row.FilePath }}</td>
+        <td>{{ row.Content }}</td>
+      <td>{{ row.timestamp }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+    <!-- 删除按钮 -->
+    <button class="delete-button" id="batch-delete-btn">删除记录</button>
+    <form class="delete-form" id="batch-form" method="POST" action="/delete_file_edit_history" style="display:none;">
+        <input id="batch-operations" type="hidden" name="files">
+    </form>
+
+    <!-- 回滚按钮 -->
+    <button id="batch-connect-btn">批量回滚</button>
+    <form id="batch-form2" method="POST" action="/file_rollback" style="display:none;">
+        <input id="batch-servers" type="hidden" name="files">
+    </form>
+
+
+    <!-- 显示flash信息 -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    {% if result %}
+        <section>
+            <h2>结果:</h2>
+            <pre>{{ result }}</pre>
+        </section>
+    {% endif %}
+
+
+    <script>
+        // 删除提示
+        const batchDeleteBtn = document.getElementById('batch-delete-btn');
+        const batchForm = document.getElementById('batch-form');
+        const batchOperationsInput = document.getElementById('batch-operations');
+
+        batchDeleteBtn.addEventListener('click', (event) => {
+            event.preventDefault(); // 阻止按钮默认行为
+
+            const selectedOperations = document.querySelectorAll('input[name=files]:checked');
+
+            if (selectedOperations.length === 0) {
+                alert('请选择要删除的记录！');
+                return;
+            }
+
+            if (confirm(`是否确认删除这 ${selectedOperations.length} 条记录？`)) {
+                const operationsIdList = Array.from(selectedOperations).map((operation) => operation.value);
+                batchOperationsInput.value = JSON.stringify(operationsIdList);
+                batchForm.submit(); // 提交表单
+            }
+        });
+
+        // 匹配全选与checkbox之间的关系
+        // 当全选变化时
+        function toggleCheckAll() {
+        const checkboxes = document.querySelectorAll('input[name=files]');
+        const checkAll = document.getElementById('checkAll');
+
+        let allChecked = true;
+        checkboxes.forEach((checkbox) => {
+            if (!checkbox.checked) {
+                allChecked = false;
+            }
+        });
+
+        checkAll.checked = allChecked;
+        }
+
+        // 当checkbox变化时
+        function toggleAllCheckboxes() {
+            const checkboxes = document.querySelectorAll('input[name=files]');
+            const checkAll = document.getElementById('checkAll');
+
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = checkAll.checked;
+            });
+        }
+
+        const checkAll = document.getElementById('checkAll');
+        checkAll.addEventListener('change', toggleAllCheckboxes);
+
+        const checkboxes = document.querySelectorAll('input[name=files]');
+        checkboxes.forEach((checkbox) => {
+            checkbox.addEventListener('change', () => {
+                toggleCheckAll();
+            });
+        });
+
+        // 根据列名获取列的索引
+        function columnIndex(column) {
+            switch (column) {
+                case 'id':
+                    return 2;
+                case 'editor':
+                    return 3;
+                case 'hostname':
+                    return 4;
+                case 'ip_address':
+                    return 5;
+                case 'FilePath':
+                    return 6;
+                case 'Content':
+                    return 7;
+                case 'timestamp':
+                    return 8;
+                default:
+                    return 0;
+            }
+        }
+
+        // 表格排序
+        const table = document.querySelector('table');
+        const sortArrows = document.querySelectorAll('.sort-arrow');
+
+        function sortTable(columnIndex, isAscending) {
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const sortedRows = rows.sort((row1, row2) => {
+            const cellValue1 = row1.querySelectorAll('td')[columnIndex].textContent;
+            const cellValue2 = row2.querySelectorAll('td')[columnIndex].textContent;
+            if (columnIndex === 1) {
+                // If sorting by ID column, parse as numbers
+                const id1 = parseInt(cellValue1);
+                const id2 = parseInt(cellValue2);
+                return isAscending ? id1 - id2 : id2 - id1;
+            } else {
+                // Otherwise, compare as strings
+                return isAscending ? cellValue1.localeCompare(cellValue2) : cellValue2.localeCompare(cellValue1);
+            }
+          });
+            table.querySelector('tbody').innerHTML = '';
+            sortedRows.forEach(row => table.querySelector('tbody').appendChild(row));
+        }
+
+        sortArrows.forEach(arrow => {
+            arrow.addEventListener('click', () => {
+                const columnIndex = arrow.closest('th').cellIndex;
+                const isAscending = !arrow.classList.contains('asc');
+                sortArrows.forEach(a => a.classList.remove('asc', 'desc'));
+                arrow.classList.add(isAscending ? 'asc' : 'desc');
+                sortTable(columnIndex, isAscending);
+            });
+        });
+
+        // input为空禁止提交
+        function validateForm() {
+            let keyword = document.getElementById("db_keyword").value;
+            if (keyword.trim() === "") {
+                alert("关键词不能为空");
+                return false;
+            }
+            return true;
+        }
+
+        // 把表格中的数据传给后端
+        const batchForm2 = document.getElementById('batch-form2');
+        const batchServers = document.getElementById('batch-servers');
+        const batchConnectBtn = document.getElementById('batch-connect-btn');
+
+        batchConnectBtn.addEventListener('click', () => {
+            const selectedServers = document.querySelectorAll('input[name=files]:checked');
+            const serverData = Array.from(selectedServers).map((server) => {
+                const row = server.parentNode.parentNode;
+                return {
+                    editor: row.cells[2].textContent,
+                    username: row.cells[4].textContent,
+                    password: row.cells[5].textContent,
+                    ip_address: row.cells[6].textContent,
+                    FilePath: row.cells[7].textContent,
+                    Content: row.cells[8].textContent
+                }
+            });
+
+            batchServers.value = JSON.stringify(serverData);
+            console.log(serverData);
+            //把 serverData 发送到后端
+            batchForm2.submit(); // 如果需要提交表单，取消注释
+        });
+    </script>
+</body>
+</html>

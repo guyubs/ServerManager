@@ -12,7 +12,8 @@
         <p><a href="{{ url_for('edit') }}">修改个人信息</a> <a href="{{ url_for('logout') }}">退出</a></p>
         <p>（此处显示软件主要功能）</p>
         <p><a href="{{ url_for('manage_server') }}">服务器列表</a></p><br>
-        <p><a href="{{ url_for('manage_operation') }}">操作记录</a></p>
+        <p><a href="{{ url_for('manage_operation') }}">操作记录</a></p><br>
+        <p><a href="{{ url_for('file_edit_history') }}">文件编辑历史记录</a></p><br>
 
         {% with messages = get_flashed_messages() %}
             {% if messages %}

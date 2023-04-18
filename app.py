@@ -9,6 +9,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_mail import Mail, Message
 from datetime import datetime
 from flask_caching import Cache
+import getpass
+
 
 app = Flask(__name__)
 app.secret_key = "secret key"  # 设置 secret key 以启用 flash 消息
@@ -72,6 +74,21 @@ if not cursor.fetchone():
                    "timestamp datetime DEFAULT GETDATE())")
     conn.commit()
 
+
+# 检查数据库中是否存在files表。若没有则创建。
+cursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='files'")
+if not cursor.fetchone():
+    cursor.execute("CREATE TABLE files "
+                   "(id int PRIMARY KEY IDENTITY(1,1), "
+                   "editor varchar(255), "
+                   "hostname varchar(255), "
+                   "username varchar(255), "
+                   "password varchar(255), "
+                   "ip_address varchar(255), "
+                   "FilePath VARCHAR(255), "
+                   "Content NVARCHAR(MAX), "
+                   "timestamp datetime DEFAULT GETDATE())")
+    conn.commit()
 
 ############
 # 发送邮件配置
@@ -507,83 +524,6 @@ def batch_execute():
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
 
 
-@app.route('/read_file', methods=['POST'])
-def read_file():
-    global connected_servers
-    global failed_servers
-
-    file_path = request.form.get('read_file_path')
-    result = ''
-
-    if not file_path:
-        result = '请输入要执行的命令。'
-
-    else:
-        for ssh in connected_clients:
-            try:
-                sftp = ssh.open_sftp()
-                remote_file = sftp.open(file_path, 'r')
-                # output = remote_file.read()
-                output = remote_file.read().decode('utf-8')
-
-                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
-
-                if output:
-                    result += f"{output}\n"
-
-                    # 获取远程主机的IP地址和端口号
-                    ip, port = ssh.get_transport().getpeername()
-
-                    # 根据IP地址反向查找主机名
-                    hostname = socket.gethostbyaddr(ip)[0]
-
-                    # 将用户操作添加到 operations 表
-                    save_operation('Read' + file_path, hostname, ip)
-
-            except Exception as e:
-                result += f"执行命令出错：{str(e)}\n"
-
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
-
-
-@app.route('/edit_file', methods=['POST'])
-def edit_file():
-    global connected_servers
-    global failed_servers
-
-    file_path = request.form.get('edit_file_path')
-    new_content = request.form.get('new_file_content')
-    result = ''
-
-    if not file_path or not new_content:
-        result = '请输入要执行的命令。'
-
-    else:
-        for ssh in connected_clients:
-            try:
-                sftp = ssh.open_sftp()
-                remote_file = sftp.open(file_path, 'w')
-                remote_file.write(new_content)
-                remote_file.close()
-
-                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
-                result += f"文件 {file_path} 编辑成功！\n"
-
-                # 获取远程主机的IP地址和端口号
-                ip, port = ssh.get_transport().getpeername()
-
-                # 根据IP地址反向查找主机名
-                hostname = socket.gethostbyaddr(ip)[0]
-
-                # 将用户操作添加到 operations 表
-                save_operation('Edit' + file_path, hostname, ip)
-
-            except Exception as e:
-                result += f"执行命令出错：{str(e)}\n"
-
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
-
-
 # 查询目录
 @app.route('/batch_show_directory_files', methods=['POST'])
 def batch_show_directory_files():
@@ -756,22 +696,21 @@ def manage_operation():
     cached_data = cache.get('manage_operation')
     if cached_data is not None:
         print("从缓存中检索到数据。")
-        return cached_data
+        data = cached_data
+    else:
+        # 连接数据库
+        cursor = conn.cursor()
 
-    # 连接数据库
-    cursor = conn.cursor()
+        # 获取 ServerInfo 表中的所有数据
+        cursor.execute("SELECT * FROM operations")
+        data = cursor.fetchall()
 
-    # 获取 ServerInfo 表中的所有数据
-    cursor.execute("SELECT * FROM operations")
-    data = cursor.fetchall()
+        # 缓存数据以供未来的请求
+        cache.set('manage_operation', data, timeout=300)
 
     # 分页
     page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
     current_data, pagination = paginate(data, page)
-
-    # 缓存数据以供未来的请求
-    cache.set('manage_operation', render_template('manage_operation.html', data=current_data, pagination=pagination),
-              timeout=300)
 
     return render_template('manage_operation.html', data=current_data, pagination=pagination)
 
@@ -809,7 +748,7 @@ def search():
 
 
 # 分页
-def paginate(data, page, per_page=50):
+def paginate(data, page, per_page=25):
     data_count = len(data)  # 数据总量
     page_count = (data_count - 1) // per_page + 1  # 总页数
     start = (page - 1) * per_page  # 当前页数据起始下标
@@ -841,6 +780,255 @@ def search_db(column, keyword):
     cursor.execute(sql, value)
     result = cursor.fetchall()
     return result
+
+
+###################################
+# 文件编辑。
+###################################
+# 读取文档文件
+@app.route('/read_file', methods=['POST'])
+def read_file():
+    global connected_servers
+    global failed_servers
+
+    file_path = request.form.get('read_file_path')
+    result = ''
+
+    if not file_path:
+        result = '请输入要执行的命令。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                sftp = ssh.open_sftp()
+                remote_file = sftp.open(file_path, 'r')
+                # output = remote_file.read()
+                output = remote_file.read().decode('utf-8')
+
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+
+                if output:
+                    result += f"{output}\n"
+
+                    # 获取远程主机的IP地址和端口号
+                    ip, port = ssh.get_transport().getpeername()
+
+                    # 根据IP地址反向查找主机名
+                    hostname = socket.gethostbyaddr(ip)[0]
+
+                    # 将用户操作添加到 operations 表
+                    save_operation('Read' + file_path, hostname, ip)
+
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+# 编辑文档文件
+@app.route('/edit_file', methods=['POST'])
+def edit_file():
+    global connected_servers
+    global failed_servers
+
+    file_path = request.form.get('edit_file_path')
+    new_content = request.form.get('new_file_content')
+    result = ''
+
+    if not file_path or not new_content:
+        result = '请输入要执行的命令。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                sftp = ssh.open_sftp()
+                remote_file = sftp.open(file_path, 'w')
+                remote_file.write(new_content)
+                remote_file.close()
+
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+                result += f"文件 {file_path} 编辑成功！\n"
+
+                # 将新文件的内容存储到 SQL Server 数据库中
+                # 获取远程主机的IP地址和端口号
+                ip, port = ssh.get_transport().getpeername()
+                # 根据IP地址反向查找主机名
+                hostname = socket.gethostbyaddr(ip)[0]
+                # 将用户操作添加到 files 表
+                save_file(file_path, new_content, hostname, ip)
+
+                # 将用户操作添加到 operations 表
+                command = 'Edit ' + file_path + ': ' + new_content
+                save_operation(command, hostname, ip)
+
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+
+
+# 查看文件编辑历史
+@app.route('/file_edit_history', methods=['GET', 'POST'])
+def file_edit_history():
+    # 连接数据库
+    cursor = conn.cursor()
+
+    # 获取 ServerInfo 表中的所有数据
+    cursor.execute("SELECT * FROM files")
+    data = cursor.fetchall()
+
+    # 分页
+    page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
+    current_data, pagination = paginate(data, page)
+
+    return render_template('file_edit_history.html', data=current_data, pagination=pagination)
+
+
+# 删除文件编辑记录
+@app.route('/delete_file_edit_history', methods=['POST'])
+def delete_file_edit_history():
+    files_id = request.form.get('files')
+    if files_id == '[]':
+        flash('请选择要删除的记录。')
+        return redirect(url_for('delete_file_edit_history'))
+    files_id_list = json.loads(files_id)
+    for file_id in files_id_list:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM files WHERE id=?", (file_id,))
+            conn.commit()
+            flash(f'记录{file_id}已删除！')
+        except Exception as e:
+            flash(f'记录{file_id}删除失败！')
+    return redirect(url_for('file_edit_history'))
+
+
+def save_file(file_path, content, hostname, ip_address):
+    # 将用户操作添加到 operations 表
+    timestamp = datetime.now()  # 获取当前日期和时间
+
+    # 查询 ServerInfo 表中的密码
+    cursor.execute("SELECT username, password FROM ServerInfo WHERE ip_address = ?", (ip_address,))
+    row = cursor.fetchone()
+    if row is None:
+        # 如果没有找到密码，则将密码设置为 None
+        password = None
+        username = None
+    else:
+        # 如果找到了密码，则将其赋值给 password 和 username 变量
+        username = row[0]
+        password = row[1]
+
+    # 插入新记录到 files 表
+    cursor.execute(
+        "INSERT INTO files (editor, hostname, username, password, ip_address, FilePath, Content, timestamp) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (session['username'], hostname, username, password, ip_address, file_path, content, timestamp)
+    )
+    conn.commit()
+
+
+@app.route('/search_db_files', methods=['GET', 'POST'])
+def search_db_files():
+    if request.method == 'POST':
+        column = request.form.get('db_column')
+        keyword = request.form.get('db_keyword')
+        if column and keyword:
+            # 尝试从缓存中获取数据
+            cache_key = f"search:{column}:{keyword}"
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                print("从缓存中检索到数据。")
+                return cached_data
+
+            data = search_dbFiles(column, keyword)
+
+            # 分页
+            page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
+            current_data, pagination = paginate(data, page)
+
+            return render_template('file_edit_history.html', data=current_data, pagination=pagination)
+
+    return render_template('file_edit_history.html')
+
+
+def search_dbFiles(column, keyword):
+    cursor = conn.cursor()
+    if column == 'timestamp':  # 如果搜索的是时间列
+        sql = "SELECT * FROM files WHERE CONVERT(varchar(100), timestamp, 120) LIKE ?"
+    else:  # 否则搜索其他列
+        sql = "SELECT * FROM files WHERE {} LIKE ?".format(column)
+    value = ("%" + keyword + "%",)
+    cursor.execute(sql, value)
+    result = cursor.fetchall()
+    return result
+
+
+# 文档回滚
+@app.route('/file_rollback', methods=['POST'])
+def file_rollback():
+    global connected_servers
+
+    servers = request.form.get('files')
+    result = ''
+
+    if not servers:
+        flash('请选择要操作的服务器。')
+        return redirect(url_for('index'))
+
+    server_data = json.loads(servers)
+
+    for server in server_data:
+        username = server['username']
+        password = server['password']
+        ip_address = server['ip_address']
+        file_path = server['FilePath']
+        new_content = server['Content']
+
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        try:
+            ssh.connect(ip_address, username=username, password=password)
+
+            try:
+                sftp = ssh.open_sftp()
+                remote_file = sftp.open(file_path, 'w')
+                remote_file.write(new_content)
+                remote_file.close()
+
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+                result += f"文件 {file_path} 回滚成功！\n"
+
+                # 将新文件的内容存储到 SQL Server 数据库中
+                # 获取远程主机的IP地址和端口号
+                ip, port = ssh.get_transport().getpeername()
+                # 根据IP地址反向查找主机名
+                hostname = socket.gethostbyaddr(ip)[0]
+                # 将用户操作添加到 files 表
+                save_file(file_path, new_content, hostname, ip)
+
+                # 将用户操作添加到 operations 表
+                command = 'Rollback: ' + file_path + ': ' + new_content
+                save_operation(command, hostname, ip)
+
+            except Exception as e:
+                result += f"连接服务器成功，回滚出错：{str(e)}\n"
+
+            ssh.close()
+
+        except Exception as e:
+            result += f"连接服务器出错：{str(e)}\n"
+
+    # 获取 ServerInfo 表中的所有数据
+    cursor.execute("SELECT * FROM files")
+    data = cursor.fetchall()
+
+    # 分页
+    page = int(request.args.get('page', 1))  # 获取当前页码，默认为第一页
+    current_data, pagination = paginate(data, page)
+
+    return render_template('file_edit_history.html', data=current_data, pagination=pagination, result=result)
 
 
 if __name__ == '__main__':
