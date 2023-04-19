@@ -904,7 +904,6 @@ def delete_file_edit_history():
 
 
 def save_file(file_path, content, hostname, ip_address):
-    # 将用户操作添加到 operations 表
     timestamp = datetime.now()  # 获取当前日期和时间
 
     # 查询 ServerInfo 表中的密码

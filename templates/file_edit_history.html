@@ -1,4 +1,4 @@
-<!-- manage_operation.html -->
+<!-- file_edit_history.html -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -65,31 +65,31 @@
         <input type="checkbox" id="checkAll" />
         <label for="checkAll">全选/取消</label>
       </th>
-      <th class="sortable" data-column="id">ID <span class="sort-arrow"></span></th>
-      <th class="sortable" data-column="editor">操作人 <span class="sort-arrow"></span></th>
-      <th class="sortable" data-column="hostname">主机名 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="id">ID <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="editor">操作人 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="hostname">主机名 <span class="sort-arrow"></span></th>
         <th class="sortable" data-column="username">用户名 <span class="sort-arrow"></span></th>
         <th class="sortable" data-column="password">密码 <span class="sort-arrow"></span></th>
-      <th class="sortable" data-column="ip_address">IP地址 <span class="sort-arrow"></span></th>
-      <th class="sortable" data-column="FilePath">文件路径 <span class="sort-arrow"></span></th>
-        <th class="sortable" data-column="Content">文件内容 <span class="sort-arrow"></span></th>
-      <th class="sortable" data-column="timestamp">时间 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="ip_address">IP地址 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="FilePath">文件路径 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="Content">内容 <span class="sort-arrow"></span></th>
+        <th class="sortable" data-column="timestamp">时间 <span class="sort-arrow"></span></th>
       <th></th>
     </tr>
   </thead>
   <tbody>
     {% for row in data %}
     <tr>
-      <td><input type="checkbox" name="files" value="{{ row.id }}"></td>
-      <td>{{ row.id }}</td>
-      <td>{{ row.editor }}</td>
-      <td>{{ row.hostname }}</td>
+        <td><input type="checkbox" name="files" value="{{ row.id }}"></td>
+        <td>{{ row.id }}</td>
+        <td>{{ row.editor }}</td>
+        <td>{{ row.hostname }}</td>
         <td>{{ row.username }}</td>
         <td>{{ row.password }}</td>
-      <td>{{ row.ip_address }}</td>
-      <td>{{ row.FilePath }}</td>
+        <td>{{ row.ip_address }}</td>
+        <td>{{ row.FilePath }}</td>
         <td>{{ row.Content }}</td>
-      <td>{{ row.timestamp }}</td>
+        <td>{{ row.timestamp }}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -105,7 +105,39 @@
     <button id="batch-connect-btn">批量回滚</button>
     <form id="batch-form2" method="POST" action="/file_rollback" style="display:none;">
         <input id="batch-servers" type="hidden" name="files">
-    </form>
+    </form><br><br><br><br>
+
+    <!-- 对比 -->
+<div>
+  <div style="display: flex; justify-content: space-between;">
+    <button id="compareBtn" disabled>对比</button>
+  </div>
+  <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+    <div>
+      <div id="ids">
+        <p id="id1"></p>
+      </div>
+      <label for="content1">内容1:</label>
+      <textarea id="content1" style="width: 400px; height: 200px;"></textarea>
+    </div>
+    <div>
+      <div id="ids">
+        <p id="id2"></p>
+      </div>
+      <label for="content2">内容2:</label>
+      <textarea id="content2" style="width: 400px; height: 200px;" ></textarea>
+    </div>
+  </div>
+  <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+    <div style="flex: 1;">
+      <div></div>
+    </div>
+    <div style="flex: 1; margin-left: 10px;">
+      <div></div>
+    </div>
+  </div>
+</div>
+    <div id="output"></div>
 
 
     <!-- 显示flash信息 -->
@@ -275,6 +307,78 @@
             //把 serverData 发送到后端
             batchForm2.submit(); // 如果需要提交表单，取消注释
         });
+
+
+    // 对比
+    const checkboxes2 = document.querySelectorAll('input[name="files"]');
+    const compareBtn = document.getElementById('compareBtn');
+    const content1 = document.getElementById('content1');
+    const content2 = document.getElementById('content2');
+    const selectedRows = [];
+    const selectedIds = document.getElementById('selectedIds');
+
+    checkboxes2.forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          selectedRows.push(checkbox.value);
+        } else {
+          const index = selectedRows.indexOf(checkbox.value);
+          selectedRows.splice(index, 1);
+        }
+
+        compareBtn.disabled = selectedRows.length !== 2;
+
+      });
+    });
+
+    compareBtn.addEventListener('click', () => {
+      const contents = [];
+      const ids = selectedRows.map(rowId => parseInt(rowId, 10));
+      const id1 = ids[0];
+      const id2 = ids[1];
+
+      selectedRows.forEach((rowId) => {
+        const row = document.querySelector(`input[value="${rowId}"]`).parentNode.parentNode;
+        const contentCell = row.cells[8];
+        contents.push(contentCell.textContent);
+      });
+
+        content1.innerHTML = contents[0];
+        content2.innerHTML = contents[1];
+
+
+      document.querySelector('#id1').innerText = `ID: ${id1}`;
+      document.querySelector('#id2').innerText = `ID: ${id2}`;
+
+      // 将文本框内容按行拆分成数组
+    const lines1 = content1.innerHTML.split('\n');
+    const lines2 = content2.innerHTML.split('\n');
+
+    // 遍历两个数组，比较每一行的内容
+    let outputHtml = '';
+    for (let i = 0; i < Math.max(lines1.length, lines2.length); i++) {
+          const line1 = lines1[i] || '';
+          const line2 = lines2[i] || '';
+
+          // 判断两行是否相同，不同的用红色标记
+          if (line1 !== line2) {
+          outputHtml += '<span style="color:red">';
+        }
+        outputHtml += '<pre>' + line1 + '</pre>';
+        if (line1 !== line2) {
+          outputHtml += '</span>';
+        }
+
+
+    }
+
+// 将结果输出到第一个文本框
+// 将结果输出到一个<div>元素中
+document.getElementById('output').innerHTML = outputHtml;
+
+    });
+
+
     </script>
 </body>
 </html>
