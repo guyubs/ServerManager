@@ -1074,13 +1074,16 @@ def firewall():
 
                 elif action == 'off':
                     command = 'netsh advfirewall set allprofiles state off'
-                    # 添加名为"OpenSSH"的防火墙规则，以允许SSH流量通过端口22, 避免关闭防火墙时段时候见SSH连接断开
-                    add_rule_cmd = 'netsh advfirewall firewall add rule name="OpenSSH" dir=in action=allow protocol=TCP localport=22'
-                    stdin, stdout, stderr = ssh.exec_command(add_rule_cmd)
 
                 stdin, stdout, stderr = ssh.exec_command(command)
                 output = stdout.read().decode()
                 error = stderr.read().decode()
+
+                if action == 'off':
+                    # 添加名为"OpenSSH"的防火墙规则，以允许SSH流量通过端口22, 避免关闭防火墙时段时候见SSH连接断开
+                    add_rule_cmd = 'netsh advfirewall firewall add rule name="OpenSSH" dir=in action=allow protocol=TCP localport=22'
+                    stdin, stdout, stderr = ssh.exec_command(add_rule_cmd)
+
                 result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
 
                 if output:
