@@ -2,15 +2,15 @@ import json
 import paramiko
 import pyodbc
 import random
-import os
 import socket
+import os
+import win32api
+import win32con
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_mail import Mail, Message
 from datetime import datetime
 from flask_caching import Cache
-import getpass
-
 
 app = Flask(__name__)
 app.secret_key = "secret key"  # 设置 secret key 以启用 flash 消息
@@ -61,7 +61,6 @@ if not cursor.fetchone():
                    "note text)")
     conn.commit()
 
-
 # 检查数据库中是否存在operations表。若没有则创建。
 cursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='operations'")
 if not cursor.fetchone():
@@ -74,7 +73,6 @@ if not cursor.fetchone():
                    "timestamp datetime DEFAULT GETDATE())")
     conn.commit()
 
-
 # 检查数据库中是否存在files表。若没有则创建。
 cursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='files'")
 if not cursor.fetchone():
@@ -86,6 +84,23 @@ if not cursor.fetchone():
                    "password varchar(255), "
                    "ip_address varchar(255), "
                    "FilePath VARCHAR(255), "
+                   "Content NVARCHAR(MAX), "
+                   "timestamp datetime DEFAULT GETDATE())")
+    conn.commit()
+
+
+# 检查数据库中是否存在port_forwarding_rules表。若没有则创建。
+cursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME='port_forwarding_rules'")
+if not cursor.fetchone():
+    cursor.execute("CREATE TABLE port_forwarding_rules "
+                   "(id int PRIMARY KEY IDENTITY(1,1), "
+                   "editor varchar(255), "
+                   "hostname varchar(255), "
+                   "username varchar(255), "
+                   "password varchar(255), "
+                   "ip_address varchar(255), "
+                   "remote_port varchar(255), "
+                   "local_port varchar(255), "
                    "Content NVARCHAR(MAX), "
                    "timestamp datetime DEFAULT GETDATE())")
     conn.commit()
@@ -118,9 +133,6 @@ def send_verification_code():
     mail.send(msg)
     flash('验证码已发送至您的邮箱。')
     return redirect(url_for('register'))
-
-
-
 
 
 ###################################
@@ -450,7 +462,8 @@ def batch_operation():  # 连接服务器
 
         try:
             ssh.connect(ip_address, username=username, password=password)
-            connected_servers.append({'hostname': hostname, 'username': username, 'password': password, 'ip_address': ip_address})
+            connected_servers.append(
+                {'hostname': hostname, 'username': username, 'password': password, 'ip_address': ip_address})
             connected_clients.append(ssh)  # 将SSHClient对象添加到全局列表中
 
         except Exception as e:
@@ -475,14 +488,16 @@ def disconnect_servers():
         result = "连接已断开。"
     else:
         result = '当前没有任何连接。'
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
 
 
 def save_operation(command, hostname, ip_address):
     # 将用户操作添加到 operations 表
     timestamp = datetime.now()  # 获取当前日期和时间
-    cursor.execute("INSERT INTO operations (username, hostname, ip_address, operation, timestamp) VALUES (?, ?, ?, ?, ?)",
-                   (session['username'], hostname, ip_address, command, timestamp))
+    cursor.execute(
+        "INSERT INTO operations (username, hostname, ip_address, operation, timestamp) VALUES (?, ?, ?, ?, ?)",
+        (session['username'], hostname, ip_address, command, timestamp))
     conn.commit()
 
 
@@ -521,7 +536,8 @@ def batch_execute():
             except Exception as e:
                 result += f"执行命令出错：{str(e)}\n"
 
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
 
 
 # 查询目录
@@ -562,7 +578,8 @@ def batch_show_directory_files():
             except Exception as e:
                 result += f"执行命令出错：{str(e)}\n"
 
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
 
 
 # 批量下载
@@ -604,13 +621,13 @@ def batch_download():
                 # 将用户操作添加到 operations 表
                 save_operation(command, hostname, ip)
 
-
                 sftp.close()
                 result = "下载成功！"
             except Exception as e:
                 result += f"执行命令出错：{str(e)}\n"
 
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
 
 
 @app.route('/batch_upload', methods=['POST'])
@@ -644,7 +661,8 @@ def batch_upload():
                         # 将用户操作添加到 operations 表
                         save_operation(command, hostname, ip)
 
-                        return render_template('confirm_overwrite.html', local_file_path=local_file_path, remote_file_path=remote_file_path)
+                        return render_template('confirm_overwrite.html', local_file_path=local_file_path,
+                                               remote_file_path=remote_file_path)
                     elif overwrite == 'no':
                         result = '上传已取消。'
                         break
@@ -659,7 +677,8 @@ def batch_upload():
             except Exception as e:
                 result += f"{ssh.get_transport().getpeername()[0]} 执行命令出错：{str(e)}\n"
 
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
 
 
 ###################################
@@ -822,7 +841,8 @@ def read_file():
             except Exception as e:
                 result += f"执行命令出错：{str(e)}\n"
 
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
 
 
 # 编辑文档文件
@@ -864,7 +884,8 @@ def edit_file():
             except Exception as e:
                 result += f"执行命令出错：{str(e)}\n"
 
-    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers, result=result)
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
 
 
 # 查看文件编辑历史
@@ -903,6 +924,7 @@ def delete_file_edit_history():
     return redirect(url_for('file_edit_history'))
 
 
+# 储存每一次的修改版本
 def save_file(file_path, content, hostname, ip_address):
     timestamp = datetime.now()  # 获取当前日期和时间
 
@@ -927,18 +949,13 @@ def save_file(file_path, content, hostname, ip_address):
     conn.commit()
 
 
+# 根据列和关键字搜索
 @app.route('/search_db_files', methods=['GET', 'POST'])
 def search_db_files():
     if request.method == 'POST':
         column = request.form.get('db_column')
         keyword = request.form.get('db_keyword')
         if column and keyword:
-            # 尝试从缓存中获取数据
-            cache_key = f"search:{column}:{keyword}"
-            cached_data = cache.get(cache_key)
-            if cached_data is not None:
-                print("从缓存中检索到数据。")
-                return cached_data
 
             data = search_dbFiles(column, keyword)
 
@@ -951,6 +968,7 @@ def search_db_files():
     return render_template('file_edit_history.html')
 
 
+# 根据列和关键字搜索数据库
 def search_dbFiles(column, keyword):
     cursor = conn.cursor()
     if column == 'timestamp':  # 如果搜索的是时间列
@@ -1019,7 +1037,7 @@ def file_rollback():
         except Exception as e:
             result += f"连接服务器出错：{str(e)}\n"
 
-    # 获取 ServerInfo 表中的所有数据
+    # 获取 files 表中的所有数据
     cursor.execute("SELECT * FROM files")
     data = cursor.fetchall()
 
@@ -1028,6 +1046,218 @@ def file_rollback():
     current_data, pagination = paginate(data, page)
 
     return render_template('file_edit_history.html', data=current_data, pagination=pagination, result=result)
+
+
+##########################
+# 防火墙
+##########################
+# 开关防火墙
+@app.route('/firewall', methods=['POST'])
+def firewall():
+    global connected_servers
+    global failed_servers
+
+    result = ''
+    action = request.form.get('command')
+
+    if not action:
+        result = '请输入要执行的命令。'
+    else:
+        for ssh in connected_clients:
+            try:
+                # 在本地计算机上运行 winrs 命令以在远程计算机上以管理员身份运行 PowerShell
+                command = ''
+
+                # 构造命令，使用管道输入密码
+                if action == 'on':
+                    command = 'netsh advfirewall set allprofiles state on'
+
+                elif action == 'off':
+                    command = 'netsh advfirewall set allprofiles state off'
+                    # 添加名为"OpenSSH"的防火墙规则，以允许SSH流量通过端口22, 避免关闭防火墙时段时候见SSH连接断开
+                    add_rule_cmd = 'netsh advfirewall firewall add rule name="OpenSSH" dir=in action=allow protocol=TCP localport=22'
+                    stdin, stdout, stderr = ssh.exec_command(add_rule_cmd)
+
+                stdin, stdout, stderr = ssh.exec_command(command)
+                output = stdout.read().decode()
+                error = stderr.read().decode()
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+
+                if output:
+                    result += f"{output}\n"
+
+                    # 获取远程主机的IP地址和端口号
+                    ip, port = ssh.get_transport().getpeername()
+
+                    # 根据IP地址反向查找主机名
+                    hostname = socket.gethostbyaddr(ip)[0]
+
+                    # 将用户操作添加到 operations 表
+                    save_operation(command, hostname, ip)
+                if error:
+                    result += f"{error}\n"
+
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers,
+                           failed_servers=failed_servers, result=result)
+
+
+######################
+# 应用端口转发规则
+######################
+def run_command(command):
+    # 创建带有管理员权限的命令提示符窗口
+    win32api.ShellExecute(
+        0,
+        'runas',
+        'cmd.exe',
+        '/c ' + command,
+        None,
+        win32con.SW_SHOW
+    )
+    return 'Command executed successfully\n'
+
+
+# 应用端口转发规则
+@app.route('/port_forwarding_rule', methods=['POST'])
+def port_forwarding_rule():
+    global connected_servers
+    global failed_servers
+
+    result = ''
+    remote_port = request.form['remote_port']
+    local_port = request.form['local_port']
+
+    if not remote_port or not local_port:
+        result = '请输入端口。'
+    else:
+        for ssh in connected_clients:
+            transport = ssh.get_transport()
+            ip = transport.getpeername()[0]  # 获取IP
+            command = 'netsh interface portproxy add v4tov4 listenport=' + local_port + ' listenaddress=0.0.0.0 connectport=' + remote_port + ' connectaddress=' + ip
+            result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+            output = run_command(command)
+
+            if output:
+                result += f"{output}\n"
+
+                # 获取远程主机的IP地址和端口号
+                ip, port = ssh.get_transport().getpeername()
+                # 根据IP地址反向查找主机名
+                hostname = socket.gethostbyaddr(ip)[0]
+                # 将用户操作添加到 operations 表
+                save_operation(command, hostname, ip)
+
+                # 保存到数据库
+                save_port_forwarding_rules(ip, remote_port, local_port, command)
+
+    return render_template('batch_operation.html', connected_servers=connected_servers,
+                           failed_servers=failed_servers, result=result)
+
+
+def save_port_forwarding_rules(ip_address, remote_port, local_port, content):
+    timestamp = datetime.now()  # 获取当前日期和时间
+
+    # 查询 ServerInfo 表中的记录
+    cursor.execute("SELECT hostname, username, password FROM ServerInfo WHERE ip_address = ?", (ip_address,))
+    row = cursor.fetchone()
+    if row is None:
+        # 如果没有找到记录，则将 hostname、username 和 password 都设置为 None
+        hostname = None
+        username = None
+        password = None
+    else:
+        # 如果找到了记录，则将其赋值给 hostname、username 和 password 变量
+        hostname = row[0]
+        username = row[1]
+        password = row[2]
+
+    # 插入新记录到 port_forwarding_rules 表
+    cursor.execute(
+        "INSERT INTO port_forwarding_rules (editor, hostname, username, password, ip_address, remote_port, "
+        "local_port, Content, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (session['username'], hostname, username, password, ip_address, remote_port, local_port, content, timestamp))
+    conn.commit()
+
+
+##############
+# 端口转发规则数据库表
+#############
+@app.route('/port_forwarding_rule_html', methods=['GET', 'POST'])
+def port_forwarding_rule_html():
+    # 连接数据库
+    cursor = conn.cursor()
+
+    # 获取 ServerInfo 表中的所有数据
+    cursor.execute("SELECT * FROM port_forwarding_rules")
+    data = cursor.fetchall()
+
+    return render_template('port_forwarding_rules_table.html', data=data)
+
+
+@app.route('/search_db_port_forwarding_rules', methods=['GET', 'POST'])
+def search_db_port_forwarding_rules():
+    if request.method == 'POST':
+        column = request.form.get('db_column')
+        keyword = request.form.get('db_keyword')
+        data = search_db_port_forwarding_rules_keyword(column, keyword)
+
+        return render_template('port_forwarding_rules_table.html', data=data)
+
+    return render_template('port_forwarding_rules_table.html')
+
+
+# 根据列和关键字搜索数据库
+def search_db_port_forwarding_rules_keyword(column, keyword):
+    cursor = conn.cursor()
+    if column == 'timestamp':  # 如果搜索的是时间列
+        sql = "SELECT * FROM port_forwarding_rules WHERE CONVERT(varchar(100), timestamp, 120) LIKE ?"
+    else:  # 否则搜索其他列
+        sql = "SELECT * FROM port_forwarding_rules WHERE {} LIKE ?".format(column)
+    value = ("%" + keyword + "%",)
+    cursor.execute(sql, value)
+    result = cursor.fetchall()
+    return result
+
+
+# 导入规则
+@app.route('/run_port_forwarding_rule', methods=['POST'])
+def run_port_forwarding_rule():
+    global connected_servers
+
+    servers = request.form.get('port_forwarding_rules')
+    result = ''
+
+    if not servers:
+        flash('请选择要操作的服务器。')
+        return redirect(url_for('index'))
+
+    server_data = json.loads(servers)
+
+    for server in server_data:
+        hostname = server['hostname']
+        ip_address = server['ip_address']
+        content = server['Content']
+
+        result += f"====== {hostname} ({ip_address}) ======\n"
+        output = run_command(content)
+
+        if output:
+            result += f"{output}\n"
+
+            # 将用户操作添加到 operations 表
+            save_operation(content, hostname, ip_address)
+
+        else:
+            result += f"{导入出错}\n"
+
+    # 获取 port_forwarding_rules 表中的所有数据
+    cursor.execute("SELECT * FROM port_forwarding_rules")
+    data = cursor.fetchall()
+
+    return render_template('port_forwarding_rules_table.html', data=data, result=result)
 
 
 if __name__ == '__main__':

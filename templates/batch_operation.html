@@ -32,6 +32,12 @@
             </section>
             <section>
                 <h2>操作：</h2>
+                <h4>防火墙：</h4>
+                <form method="POST" action="/firewall">
+                  <button type="submit" name="command" value="on">开启防火墙</button>
+                  <button type="submit" name="command" value="off">关闭防火墙</button>
+                </form>
+
                 <h4>查询操作：</h4>
                 <form method="POST" action="/batch_execute">
                     <button type="submit" name="command" value="hostname">查看主机名</button>
@@ -129,6 +135,17 @@
                     <input type="submit" value="执行">
                 </form><br>
 
+                <h4>端口转发规则配置</h4>
+                <form action="/port_forwarding_rule" method="POST">
+                    <label for="remote_port">远程端口：</label>
+                    <input type="text" id="remote_port" name="remote_port"><br><br>
+                    <label for="local_port">本地端口：</label>
+                    <input type="text" id="local_port" name="local_port"><br><br>
+                    <input type="submit" value="提交规则">
+                </form>
+
+
+
                 <h2>执行命令：</h2>
                 <form action="/batch_execute" method="POST">
                     <label for="command">执行命令:</label>
@@ -211,6 +228,8 @@
             document.getElementById("command").value = newCommand;
             commandInput1.value = newCommand;
           }
+
+
         </script>
     </body>
 </html>
