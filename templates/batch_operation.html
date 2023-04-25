@@ -158,7 +158,16 @@
                     <input type="text" id="command" name="command" style="width: 1000px;">
                     <input type="submit" value="删除">
                 </form><br>
-
+                <form method="post" action="/show_directory">
+                  <label for="remote_dir_path">查询文件夹下所有文件的路径，C:\here</label>
+                  <input type="text" name="remote_dir_path" id="remote_dir_path" required>
+                  <button type="submit">查询</button>
+                </form>
+                <form method="post" action="/batch_software_install">
+                  <label for="software_dir">请输入软件安装包所在文件夹的路径，如C:\here</label>
+                  <input type="text" name="software_dir" id="software_dir" required>
+                  <button type="submit">安装全部软件</button>
+                </form>
 
                 <h2>执行命令：</h2>
                 <form action="/batch_execute" method="POST">
