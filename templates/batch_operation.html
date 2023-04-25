@@ -144,6 +144,20 @@
                     <input type="submit" value="提交规则">
                 </form>
 
+                <h4>软件安装，删除：</h4>
+                <form method="POST" action="/batch_execute">
+                    <button type="submit" name="command" value="wmic product get Name">查看已安装的软件</button>
+                </form><br>
+                <form action="/software_install" method="POST">
+                    <label for="command">请输入.msi安装包路径，如C:\here\ZoomInstaller.msi</label><br>
+                    <input type="text" id="command" name="command" style="width: 1000px;">
+                    <input type="submit" value="安装">
+                </form><br>
+                <form action="/software_uninstall" method="POST">
+                    <label for="command">请输入要删除的软件名，如：Zoom(64bit)。注：请先点击查看已安装的软件找到正确的软件名</label><br>
+                    <input type="text" id="command" name="command" style="width: 1000px;">
+                    <input type="submit" value="删除">
+                </form><br>
 
 
                 <h2>执行命令：</h2>

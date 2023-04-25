@@ -1263,5 +1263,90 @@ def run_port_forwarding_rule():
     return render_template('port_forwarding_rules_table.html', data=data, result=result)
 
 
+##########################
+# 软件安装，删除
+#########################
+# 软件安装
+@app.route('/software_install', methods=['POST'])
+def software_install():
+    global connected_servers
+    global failed_servers
+
+    command = request.form.get('command')
+    command = 'msiexec /i "' + command + '" /qn'
+    result = ''
+
+    if not command:
+        result = '请输入要执行的命令。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                stdin, stdout, stderr = ssh.exec_command(command)
+                exit_status = stdout.channel.recv_exit_status()
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+                if exit_status == 0:
+                    result += f"安装成功。\n"
+
+                    # 获取远程主机的IP地址和端口号
+                    ip, port = ssh.get_transport().getpeername()
+
+                    # 根据IP地址反向查找主机名
+                    hostname = socket.gethostbyaddr(ip)[0]
+
+                    # 将用户操作添加到 operations 表
+                    save_operation(command, hostname, ip)
+
+                if exit_status == 1:
+                    result += f"安装失败。\n"
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
+
+
+# 软件删除
+@app.route('/software_uninstall', methods=['POST'])
+def software_uninstall():
+    global connected_servers
+    global failed_servers
+
+    command = request.form.get('command')
+    command = 'wmic product where "name=\'' + command + '\'" call uninstall'
+    result = ''
+
+    if not command:
+        result = '请输入要执行的命令。'
+
+    else:
+        for ssh in connected_clients:
+            try:
+                stdin, stdout, stderr = ssh.exec_command(command)
+                output = stdout.read().decode()
+                error = stderr.read().decode()
+                result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+                if output:
+                    result += f"{output}\n"
+
+                    # 获取远程主机的IP地址和端口号
+                    ip, port = ssh.get_transport().getpeername()
+
+                    # 根据IP地址反向查找主机名
+                    hostname = socket.gethostbyaddr(ip)[0]
+
+                    # 将用户操作添加到 operations 表
+                    save_operation(command, hostname, ip)
+
+                if error:
+                    result += f"{error}\n"
+            except Exception as e:
+                result += f"执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
