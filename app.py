@@ -1495,5 +1495,70 @@ def show_directory():
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
                            result=result)
 
+
+@app.route('/app_file_html', methods=['GET', 'POST'])
+def app_file_html():
+    if request.method == 'POST':
+        selected_files = request.form.getlist('files')
+        print(selected_files)
+    files = os.listdir('E:\\try')
+    return render_template('app_file.html', files=files)
+
+
+@app.route('/batch_upload_and_install', methods=['POST'])
+def batch_upload_and_install():
+    global connected_clients
+    global failed_servers
+
+    selected_files = request.form.getlist('selected_files')
+    result = ''
+
+    if not selected_files:
+        result = '请选择要安装的软件。'
+
+    else:
+        # 首先将所有软件上传到所有连接的服务器
+        for ssh in connected_clients:
+            try:
+                sftp = ssh.open_sftp()
+                for file in selected_files:
+                    local_file_path = os.path.join('E:\\try', file)
+                    remote_file_path = os.path.join('C:\\here', file)
+                    sftp.put(local_file_path, remote_file_path)
+                    result += f"{ssh.get_transport().getpeername()[0]} 上传成功！\n"
+                sftp.close()
+
+            except Exception as e:
+                result += f"{ssh.get_transport().getpeername()[0]} 执行命令出错：{str(e)}\n"
+
+        # 然后在每台服务器上安装所有软件
+        for ssh in connected_clients:
+            try:
+                for file in selected_files:
+                    file_path = os.path.join('C:\\here', file)
+                    command = 'msiexec /i "' + file_path + '" /qn'
+                    stdin, stdout, stderr = ssh.exec_command(command)
+                    exit_status = stdout.channel.recv_exit_status()
+                    result += f"====== {ssh.get_transport().getpeername()[0]} ({ssh.get_transport().getpeername()[1]}) ======\n"
+                    if exit_status == 0:
+                        result += f"安装成功。\n"
+
+                        # 获取远程主机的IP地址和端口号
+                        ip, port = ssh.get_transport().getpeername()
+                        # 根据IP地址反向查找主机名
+                        hostname = socket.gethostbyaddr(ip)[0]
+                        # 将用户操作添加到 operations 表
+                        save_operation(command, hostname, ip)
+
+                    if exit_status == 1:
+                        result += f"安装失败。\n"
+
+            except Exception as e:
+                result += f"{ssh.get_transport().getpeername()[0]} 执行命令出错：{str(e)}\n"
+
+    return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
+                           result=result)
+
+
 if __name__ == '__main__':
     app.run(debug=True)

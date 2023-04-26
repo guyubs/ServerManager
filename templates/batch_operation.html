@@ -168,6 +168,9 @@
                   <input type="text" name="software_dir" id="software_dir" required>
                   <button type="submit">安装全部软件</button>
                 </form>
+                <ul>
+                    <li><a href="{{ url_for('app_file_html') }}">选择安装包上传并安装</a></li>
+                </ul>
 
                 <h2>执行命令：</h2>
                 <form action="/batch_execute" method="POST">
