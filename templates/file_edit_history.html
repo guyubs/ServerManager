@@ -1,4 +1,4 @@
-<!-- file_edit_history.html -->
+<!-- 文件编辑记录表 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -139,7 +139,6 @@
 </div>
     <div id="output"></div>
 
-
     <!-- 显示flash信息 -->
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -157,7 +156,6 @@
             <pre>{{ result }}</pre>
         </section>
     {% endif %}
-
 
     <script>
         // 删除提示
@@ -194,7 +192,6 @@
                 allChecked = false;
             }
         });
-
         checkAll.checked = allChecked;
         }
 
@@ -308,7 +305,6 @@
             batchForm2.submit(); // 如果需要提交表单，取消注释
         });
 
-
     // 对比
     const checkboxes2 = document.querySelectorAll('input[name="files"]');
     const compareBtn = document.getElementById('compareBtn');
@@ -327,7 +323,6 @@
         }
 
         compareBtn.disabled = selectedRows.length !== 2;
-
       });
     });
 
@@ -345,7 +340,6 @@
 
         content1.innerHTML = contents[0];
         content2.innerHTML = contents[1];
-
 
       document.querySelector('#id1').innerText = `ID: ${id1}`;
       document.querySelector('#id2').innerText = `ID: ${id2}`;
@@ -368,15 +362,12 @@
         if (line1 !== line2) {
           outputHtml += '</span>';
         }
-
-
     }
 
     // 将结果输出到第一个文本框
     // 将结果输出到一个<div>元素中
     document.getElementById('output').innerHTML = outputHtml;
     });
-
     </script>
 </body>
 </html>

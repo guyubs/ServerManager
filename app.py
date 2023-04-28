@@ -6,7 +6,6 @@ import socket
 import os
 import win32api
 import win32con
-
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_mail import Mail, Message
 from datetime import datetime
@@ -109,7 +108,7 @@ if not cursor.fetchone():
 # 发送邮件配置
 ############
 email_sender = 'servermanagerapp@gmail.com'
-app_pw = 'belglusudxubkhdo'
+app_pw = 'belglusudxubkhdo' # 邮箱必须设置相关功能才能使用用程序发邮件
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = email_sender  # 电子邮件地址
@@ -138,6 +137,7 @@ def send_verification_code():
 ###################################
 # 用户登录，注册，编辑，退出等
 ###################################
+# 首页
 @app.route('/')
 def index():
     # 如果已登录，则跳转到 panel 页面
@@ -146,6 +146,7 @@ def index():
     return render_template('index.html')
 
 
+# 登录
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -162,6 +163,7 @@ def login():
     return render_template('login.html')
 
 
+# 注册
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -205,6 +207,7 @@ def register():
     return render_template('register.html')
 
 
+# 登出
 @app.route('/logout')
 def logout():
     # 从会话中删除用户名并返回主页
@@ -213,6 +216,7 @@ def logout():
     return redirect(url_for('index'))
 
 
+# 编辑用户信息数据库表
 @app.route('/edit', methods=['GET', 'POST'])
 def edit():
     # 如果未登录，则跳转到登录页面
@@ -287,6 +291,7 @@ def manage_server():
 ###################################
 # 编辑服务器信息
 ###################################
+# 添加服务器信息
 @app.route('/add_server', methods=['GET', 'POST'])
 def add_server():
     cursor = conn.cursor()
@@ -322,6 +327,7 @@ def add_server():
     return render_template('add_server.html')
 
 
+# 删除服务器信息
 @app.route('/server_delete/<int:server_id>', methods=['POST'])
 def server_delete(server_id):
     cursor = conn.cursor()
@@ -331,6 +337,7 @@ def server_delete(server_id):
     return redirect(url_for('manage_server'))
 
 
+# 编辑服务器信息
 @app.route('/server_edit/<int:id>', methods=['GET', 'POST'])
 def server_edit(id):
     cursor = conn.cursor()
@@ -372,9 +379,9 @@ def server_edit(id):
     return render_template('server_edit.html', data=server)
 
 
-###################################
-# 单个操作服务器
-###################################
+################################################
+# 单个操作服务器， 该功能可以删除，因为已经包含在批量操作中
+###############################################
 @app.route('/server_connect/<int:server_id>', methods=['POST', 'GET'])
 def server_connect(server_id):
     global ssh_conn
@@ -401,6 +408,7 @@ def server_connect(server_id):
     return render_template('server_connect.html')
 
 
+# 执行命令
 @app.route('/execute', methods=['POST'])
 def execute():
     global ssh_conn
@@ -419,6 +427,7 @@ def execute():
     return render_template('server_connect.html', result=result)
 
 
+# 断开连接
 @app.route('/disconnect', methods=['POST'])
 def disconnect():
     global ssh_conn
@@ -436,6 +445,7 @@ def disconnect():
 ###################################
 # 批量操作服务器
 ###################################
+# 批量连接
 @app.route('/batch_operation', methods=['POST'])
 def batch_operation():  # 连接服务器
     global connected_servers
@@ -472,6 +482,7 @@ def batch_operation():  # 连接服务器
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers)
 
 
+# 断开连接
 @app.route('/disconnect_servers', methods=['POST'])
 def disconnect_servers():
     global connected_servers
@@ -492,6 +503,7 @@ def disconnect_servers():
                            result=result)
 
 
+# 将操作储存在数据库
 def save_operation(command, hostname, ip_address):
     # 将用户操作添加到 operations 表
     timestamp = datetime.now()  # 获取当前日期和时间
@@ -501,6 +513,7 @@ def save_operation(command, hostname, ip_address):
     conn.commit()
 
 
+# 批量执行命令
 @app.route('/batch_execute', methods=['POST'])
 def batch_execute():
     global connected_servers
@@ -540,7 +553,7 @@ def batch_execute():
                            result=result)
 
 
-# 查询目录
+# 查询远程服务器的指定目录
 @app.route('/batch_show_directory_files', methods=['POST'])
 def batch_show_directory_files():
     global connected_servers
@@ -582,7 +595,7 @@ def batch_show_directory_files():
                            result=result)
 
 
-# 批量下载
+# 从远程服务器下载文件
 @app.route('/batch_download', methods=['POST'])
 def batch_download():
     global connected_servers
@@ -630,6 +643,7 @@ def batch_download():
                            result=result)
 
 
+# 往远程服务器上传文件
 @app.route('/batch_upload', methods=['POST'])
 def batch_upload():
     global connected_clients
@@ -682,7 +696,7 @@ def batch_upload():
 
 
 ###################################
-# 缓存
+# 缓存， 用在数据库页面
 ###################################
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 
@@ -690,6 +704,7 @@ cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 ###################################
 # 操作记录。
 ###################################
+# 删除数据库操作记录表
 @app.route('/delete_operation', methods=['POST'])
 def delete_operation():
     operations_id = request.form.get('operations')
@@ -708,6 +723,7 @@ def delete_operation():
     return redirect(url_for('manage_operation'))
 
 
+# 从显示数据库操作记录表到前端
 @cache.cached(timeout=300, key_prefix='manage_operation')
 @app.route('/manage_operation', methods=['GET', 'POST'])
 def manage_operation():
@@ -734,9 +750,7 @@ def manage_operation():
     return render_template('manage_operation.html', data=current_data, pagination=pagination)
 
 
-###################################
 # 搜索操作记录数据库。
-###################################
 @cache.cached(timeout=300, key_prefix='search')
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -804,7 +818,7 @@ def search_db(column, keyword):
 ###################################
 # 文件编辑。
 ###################################
-# 读取文档文件
+# 远程读取服务器上的文档文件
 @app.route('/read_file', methods=['POST'])
 def read_file():
     global connected_servers
@@ -845,7 +859,7 @@ def read_file():
                            result=result)
 
 
-# 编辑文档文件
+# 远程编辑服务器上的文档文件
 @app.route('/edit_file', methods=['POST'])
 def edit_file():
     global connected_servers
@@ -1160,6 +1174,7 @@ def port_forwarding_rule():
                            failed_servers=failed_servers, result=result)
 
 
+# 将转发规则保存到数据库端口转发规则表
 def save_port_forwarding_rules(ip_address, remote_port, local_port, content):
     timestamp = datetime.now()  # 获取当前日期和时间
 
@@ -1185,9 +1200,10 @@ def save_port_forwarding_rules(ip_address, remote_port, local_port, content):
     conn.commit()
 
 
-##############
+##################
 # 端口转发规则数据库表
-#############
+##################
+# 在前端显示端口转发规则表
 @app.route('/port_forwarding_rule_html', methods=['GET', 'POST'])
 def port_forwarding_rule_html():
     # 连接数据库
@@ -1200,6 +1216,7 @@ def port_forwarding_rule_html():
     return render_template('port_forwarding_rules_table.html', data=data)
 
 
+# 搜索端口转发规则表并返还给前端
 @app.route('/search_db_port_forwarding_rules', methods=['GET', 'POST'])
 def search_db_port_forwarding_rules():
     if request.method == 'POST':
@@ -1212,7 +1229,7 @@ def search_db_port_forwarding_rules():
     return render_template('port_forwarding_rules_table.html')
 
 
-# 根据列和关键字搜索数据库
+# 根据列和关键字搜索数据库端口转发规则表
 def search_db_port_forwarding_rules_keyword(column, keyword):
     cursor = conn.cursor()
     if column == 'timestamp':  # 如果搜索的是时间列
@@ -1225,7 +1242,7 @@ def search_db_port_forwarding_rules_keyword(column, keyword):
     return result
 
 
-# 导入规则
+# 运行规则
 @app.route('/run_port_forwarding_rule', methods=['POST'])
 def run_port_forwarding_rule():
     global connected_servers
@@ -1266,7 +1283,7 @@ def run_port_forwarding_rule():
 ##########################
 # 软件安装，删除
 #########################
-# 软件安装
+# 输入软件名安装软件
 @app.route('/software_install', methods=['POST'])
 def software_install():
     global connected_servers
@@ -1306,7 +1323,7 @@ def software_install():
                            result=result)
 
 
-# 软件删除
+# 输入软件名删除软件
 @app.route('/software_uninstall', methods=['POST'])
 def software_uninstall():
     global connected_servers
@@ -1347,6 +1364,7 @@ def software_uninstall():
                            result=result)
 
 
+# 在服务器上一次性安装多个软件
 @app.route('/batch_software_install', methods=['POST'])
 def batch_software_install():
     global connected_servers
@@ -1395,6 +1413,7 @@ def batch_software_install():
     return render_template('batch_operation.html', connected_servers=connected_servers, failed_servers=failed_servers,
                            result=result)
 
+# 显示服务器某路径下的文件
 @app.route('/show_directory', methods=['POST'])
 def show_directory():
     global connected_servers
@@ -1435,15 +1454,17 @@ def show_directory():
                            result=result)
 
 
+# 在前端显示本地安装包文件的文件名，用于一键上传加安装
 @app.route('/app_file_html', methods=['GET', 'POST'])
 def app_file_html():
     if request.method == 'POST':
         selected_files = request.form.getlist('files')
         print(selected_files)
-    files = os.listdir('E:\\try')
+    files = os.listdir('E:\\try') # 安装包地址
     return render_template('app_file.html', files=files)
 
 
+# 一键上传加安装
 @app.route('/batch_upload_and_install', methods=['POST'])
 def batch_upload_and_install():
     global connected_clients
@@ -1499,9 +1520,10 @@ def batch_upload_and_install():
                            result=result)
 
 
+# 在本地显示服务器安装包内的软件
 @app.route('/app_install_html', methods=['GET', 'POST'])
 def app_install_html():
-    remote_dir_path = 'C:\\here'
+    remote_dir_path = 'C:\\here' # 安装包地址
     result = ''
 
     # 获取第一个连接的远程主机
@@ -1523,6 +1545,7 @@ def app_install_html():
     return render_template('app_install.html', files=files)
 
 
+# 一键安装
 @app.route('/app_install', methods=['POST'])
 def app_install():
     global connected_clients
