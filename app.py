@@ -24,7 +24,8 @@ global failed_servers
 # 数据库配置
 ############
 # Connect to SQL Server Express using Windows authentication
-server = 'localhost'
+# create the database "ServerManager" before run the code
+server = 'localhost'  # or YUWORK\SQLEXPRESS
 database = 'ServerManager'
 conn = pyodbc.connect('Driver={SQL Server};Server=' + server + ';Database=' + database + ';Trusted_Connection=yes;')
 
